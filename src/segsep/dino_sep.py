@@ -50,7 +50,7 @@ class DinoSeg(torch.nn.Module):
     self.win_length = win_length
     self.spec_dim = spec_dim
     self.sample_rate = sample_rate
-    self.hop_length = 64
+    self.hop_length = self.n_fft // 4
     self.resample_rate = resample_rate
     self.downsampler = T.Resample(orig_freq=self.sample_rate, new_freq=self.resample_rate)
     self.upsampler = T.Resample(orig_freq=self.resample_rate, new_freq=self.sample_rate)

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "segsep"
+version = "0.0.1"
+authors = [
+  { name="Benjamin Olsen", email="thelarrys@gmail.com" },
+]
+description = "A package for audio source separation using segmentation models"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GPL-3.0-only",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/BenjaminOlsen/SegSep"
+"Bug Tracker" = "https://github.com/BenjaminOlsen/SegSep/issues"
