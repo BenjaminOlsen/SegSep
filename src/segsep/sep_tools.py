@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import torchaudio.transforms as T
 
-import utils
+import segsep.utils
 
 from pathlib import Path
 from random import randint

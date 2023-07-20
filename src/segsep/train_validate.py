@@ -1,6 +1,6 @@
 import torch
 from tqdm.auto import tqdm
-from .utils import should_skip_chunk
+from segsep.utils import should_skip_chunk
 
 # --------------------------------------------------------------------------------------------------
 def train(model, dataloader, optimizer, loss_fn, acc_fn, device):
