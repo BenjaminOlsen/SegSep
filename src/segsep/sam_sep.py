@@ -1,5 +1,6 @@
 import torch
 import torchaudio
+import torch.nn.functional as F
 import torchaudio.transforms as T
 from transformers import SamModel, SamConfig
 from segsep.utils import should_skip_chunk

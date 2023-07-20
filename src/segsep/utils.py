@@ -26,4 +26,4 @@ def print_tensor_stats(t, title=None):
   min = torch.min(t)
   mean = torch.mean(t)
   std = torch.std(t)
-  print(f"{title:40} - {str(tensor_type):15} - shape: {str(shape):29} (magnitude) max: {max:8.4f}, min {min:8.4f}, mean {mean:8.4f}, std: {std:8.4f}")
+  print(f"{title:20} - {str(tensor_type):15} - shape: {str(shape):29} (magnitude) max: {max:8.4f}, min {min:8.4f}, mean {mean:8.4f}, std: {std:8.4f}")
