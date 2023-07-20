@@ -14,7 +14,7 @@ class SamWrapper(torch.nn.Module):
                sample_rate=44100,
                resample_rate=22050,
                saved_model_state_dict=None):
-    super(SamWrapper, self).__init__()
+    super().__init__()
     self.n_fft = n_fft
     self.win_length = win_length
     self.spec_dim = spec_dim

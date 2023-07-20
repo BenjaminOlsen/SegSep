@@ -5,7 +5,7 @@ import torchaudio.transforms as T
 # --------------------------------------------------------------------------------------------------
 class FeatureTransformer(torch.nn.Module):
   def __init__(self, in_channels, num_channels=512, tokenW=16, tokenH=16):
-    super(FeatureTransformer, self).__init__()
+    super().__init__()
     self.in_channels = in_channels
     self.num_channels = num_channels
     self.tokenW = tokenW
