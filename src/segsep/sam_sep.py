@@ -2,7 +2,7 @@ import torch
 import torchaudio
 import torchaudio.transforms as T
 from transformers import SamModel, SamConfig
-from utils import should_skip_chunk
+from .utils import should_skip_chunk
 
 # --------------------------------------------------------------------------------------------------
 class SamWrapper(torch.nn.Module):
