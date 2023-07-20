@@ -37,7 +37,7 @@ class SamWrapper(torch.nn.Module):
     #print(f"encoder arg: {x.shape}")
 
     sample_cnt = x.shape[-1]
-    self.hop_length = (sample_cnt - self.win_length) / (self.spec_dim[0] - 1)
+    self.hop_length = int((sample_cnt - self.win_length) / (self.spec_dim[0] - 1))
 
     #print(f"calculated hop len: int({sample_cnt / (2*self.spec_dim[0])}) -> {self.hop_length}")
     x = self.downsampler(x)
