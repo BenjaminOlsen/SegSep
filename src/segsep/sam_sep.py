@@ -17,7 +17,7 @@ class SamWrapper(torch.nn.Module):
     self.spec_dim = spec_dim
     self.n_fft = 2*(self.spec_dim[1]-1)
     self.win_length = self.n_fft
-    self.hop_length = self.n_fft//2
+    self.hop_length = self.n_fft//8
     self.sample_rate = sample_rate
     self.resample_rate = resample_rate
     self.downsampler = T.Resample(orig_freq=self.sample_rate, new_freq=self.resample_rate)
