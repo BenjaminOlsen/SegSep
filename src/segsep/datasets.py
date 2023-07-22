@@ -1,6 +1,7 @@
 import os
 import json
 import torch
+import random
 import torchaudio
 from pathlib import Path
 
@@ -63,3 +64,83 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
   with open(output_file, 'w') as f:
     json.dump(metadata, f)
   print("done")
+
+# --------------------------------------------------------------------------------------------------
+class AudioPairDataset(torch.utils.data.Dataset):
+  """
+  this class defines a dataset which makes random mixtures of a given set of audio defined 
+  in a json file given in the constructor argument, according to certain conditions on the
+  spectral centroid difference and a minimum duration.
+
+  It returns a mix, and the separate sources from its __getitem__ using the index as a 
+  random seed.
+  """
+  def __init__(self, audio_dir, json_path, centroid_diff_hz=2000.0, min_duration_s=11.0):
+    with open(json_path, 'r') as f:
+      self.data_all = json.load(f)
+    self.audio_dir = audio_dir
+    self.centroid_diff_hz = centroid_diff_hz
+    self.min_duration_s = min_duration_s
+    self.data_long = [d for d in self.data_all if d['sample_cnt'] / d['sample_rate'] > min_duration_s]
+
+    if len(self.data_long) < 2:
+      raise ValueError(f"Not enough tracks longer than {min_duration_s} seconds")
+
+    print(f"found {len(self.data_long)} files of length {min_duration_s}s or longer")
+
+  def load_audio(self, filename):
+    try:
+      waveform, sample_rate = torchaudio.load(filename)
+      return waveform, sample_rate, filename
+    except Exception as e:
+      print(f"Error loading audio file {filename}: {e}")
+      return None, None
+  
+  def get_audio_pairs(self, idx):
+    torch.manual_seed(idx)
+    random.shuffle(self.data_long)
+    random.shuffle(self.data_all)
+
+    for i in range(len(self.data_long)):
+      for j in range(i+1, len(self.data_all)):
+        centroid_diff_hz_ij = abs(self.data_long[i]['spectral_centroid'] - self.data_all[j]['spectral_centroid'])
+        if centroid_diff_hz_ij > self.centroid_diff_hz:
+          waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
+          waveform2, sample_rate2, filename2 = self.load_audio(os.path.join(self.audio_dir, self.data_all[j]['filename']))
+          if waveform1 is None or waveform2 is None:
+            continue
+          return waveform1, waveform2, sample_rate1, sample_rate2, filename1, filename2
+    raise ValueError("No pair found with the required spectral centroid difference")
+
+  def __getitem__(self, idx):
+    x1, x2, sr1, sr2, fn1, fn2 = self.get_audio_pairs(idx)
+
+    len1 = x1.shape[1]
+    len2 = x2.shape[1]
+
+    if len1 < len2:
+      shorter_audio = x1
+      longer_audio = x2
+      longer_fn = fn2
+      shorter_fn = fn1
+    else:
+      shorter_audio = x2
+      longer_audio = x1
+      longer_fn = fn1
+      shorter_fn = fn2
+
+    len_short = shorter_audio.shape[1]
+    len_long = longer_audio.shape[1]
+
+    # put the shorter audio at a random starting location within the longer
+    pad_offset = random.randint(0, len_long-len_short)
+    print(f"padding audio1 {len_short} -> {len_long}: {len_long-len_short} offset {pad_offset}")
+    padded_audio = torch.nn.functional.pad(shorter_audio, (pad_offset, len_long-len_short-pad_offset))
+      
+    mix = longer_audio + padded_audio
+
+    return mix, longer_audio, padded_audio, longer_fn, shorter_fn
+    
+
+  def __len__(self):
+    return len(self.data_long)
