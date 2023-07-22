@@ -21,6 +21,8 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
   freqs = torch.linspace(0, sample_rate//2, mag_spectrum.shape[0]).unsqueeze(1)
   #sum the same frequency bin for all hops:
   spectral_centroid_val = torch.sum(mag_spectrum * freqs, dim=0) / torch.sum(mag_spectrum, dim=0)
+  #nan to zero
+  spectral_centroid_val = torch.nan_to_num(spectral_centroid_val, nan=0.0)
   mean_spectral_centroid = torch.mean(spectral_centroid_val).item()
   return mean_spectral_centroid
 
