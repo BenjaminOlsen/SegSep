@@ -52,7 +52,7 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
         waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
         sc = spectral_centroid_waveform(waveform, sample_rate)
         if verbose:
-           print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid ({sc:.4f}, sample_cnt {waveform.shape[1]}, sr: {sample_rate})")
+           print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc:.4f}, sample_cnt {waveform.shape[1]}, sr: {sample_rate})")
         metadata.append({
             'filename': audio_file,
             'sample_cnt': waveform.shape[1],
