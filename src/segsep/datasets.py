@@ -1,6 +1,10 @@
+import os
+import json
 import torch
 import torchaudio
 from pathlib import Path
+
+from segsep.utils import spectral_centroid_waveform
 
 # --------------------------------------------------------------------------------------------------
 class FSD50K_Dataset(torch.utils.data.Dataset):
@@ -8,7 +12,7 @@ class FSD50K_Dataset(torch.utils.data.Dataset):
     super(FSD50K_Dataset, self).__init__()
     self.fsd_path = fsd_path
     self.paths = list(Path(self.fsd_path).glob("*.wav"))
-
+    
   def __len__(self) -> int:
     return len(self.paths)
 
@@ -35,3 +39,27 @@ class MusdbDataset(torch.utils.data.Dataset):
     mix_audio = torch.Tensor(track.stems[0].T)
     vocal_audio = torch.Tensor(track.stems[4].T)
     return mix_audio, vocal_audio
+
+# --------------------------------------------------------------------------------------------------
+def generate_audio_metadata(audio_dir, output_file):
+    # Get list of audio files
+    audio_files = [f for f in os.listdir(audio_dir) if f.endswith('.wav') or f.endswith('.mp3')]
+    
+    # List to store metadata
+    metadata = []
+    
+    for audio_file in audio_files:
+        waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
+        sc = spectral_centroid_waveform(waveform, sample_rate)
+        
+        metadata.append({
+            'filename': audio_file,
+            'sample_cnt': waveform.shape[1],
+            'sample_rate': sample_rate,
+            'spectral_centroid': sc
+        })
+    
+    metadata.sort(key=lambda x: x['spectral_centroid'])
+    
+    with open(output_file, 'w') as f:
+        json.dump(metadata, f)
