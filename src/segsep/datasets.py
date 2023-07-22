@@ -42,25 +42,24 @@ class MusdbDataset(torch.utils.data.Dataset):
 
 # --------------------------------------------------------------------------------------------------
 def generate_audio_metadata(audio_dir, output_file, verbose=False):
-    # Get list of audio files
-    audio_files = [f for f in os.listdir(audio_dir) if f.endswith('.wav') or f.endswith('.mp3')]
-    
-    # List to store metadata
-    metadata = []
-    
-    for idx, audio_file in enumerate(audio_files):
-        waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
-        sc = spectral_centroid_waveform(waveform, sample_rate)
-        if verbose:
-           print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc:.4f}, sample_cnt {waveform.shape[1]}, sr: {sample_rate})")
-        metadata.append({
-            'filename': audio_file,
-            'sample_cnt': waveform.shape[1],
-            'sample_rate': sample_rate,
-            'spectral_centroid': sc
-        })
-    
-    metadata.sort(key=lambda x: x['spectral_centroid'])
-    
-    with open(output_file, 'w') as f:
-        json.dump(metadata, f)
+  audio_files = [f for f in os.listdir(audio_dir) if f.endswith('.wav') or f.endswith('.mp3')]
+  
+  metadata = []
+  
+  for idx, audio_file in enumerate(audio_files):
+    waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
+    sc = spectral_centroid_waveform(waveform, sample_rate)
+    if verbose:
+        print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc:.4f}, sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
+    metadata.append({
+        'filename': audio_file,
+        'sample_cnt': waveform.shape[1],
+        'sample_rate': sample_rate,
+        'spectral_centroid': sc
+    })
+  
+  metadata.sort(key=lambda x: x['spectral_centroid'])
+  
+  with open(output_file, 'w') as f:
+    json.dump(metadata, f)
+  print("done")
