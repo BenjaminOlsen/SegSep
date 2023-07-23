@@ -86,8 +86,9 @@ class SamWrapper(torch.nn.Module):
     # make sure the tensors are in the correct shape for the backbone
     outputs = self.sam_model(pixel_values=mix_spec_in.unsqueeze(0),
                              input_boxes=None,
-                             multimask_output=False)
+                             multimask_output=True)
 
+    #print(f"sam_model iou_scores: {outputs.iou_scores.shape}; {outputs.iou_scores}")
     #img_embeddings = self.sam_model.vision_encoder(mix_spec_in.unsqueeze(0))
     #print(f"img_embeddings.last_hidden_state.shap: {img_embeddings.last_hidden_state.shape}")
     #mask = self.sam_model.mask_decoder(img_embeddings.last_hidden_state)
@@ -104,4 +105,4 @@ class SamWrapper(torch.nn.Module):
     pred = (pred_mag * torch.cos(phase_in)) + (1.0j * pred_mag * torch.sin(phase_in))
     #print(f"pred.shape: {pred.shape}")
     pred_audio = self.decoder(pred.squeeze())
-    return pred_audio, mix_spec_in, phase_in, pred_mag, upscaled_pred_mask.squeeze()
+    return pred_audio, mix_spec_in, phase_in, pred_mag, upscaled_pred_mask.squeeze(), outputs.iou_scores.squeeze()
