@@ -74,14 +74,18 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
   It returns a mix, and the separate sources from its __getitem__ using the index as a 
   random seed.
+
+  dummy_mode creates a mix with the longer of the audios set to 0 for a more event-detection
+  task
   """
-  def __init__(self, audio_dir, json_path, centroid_diff_hz=2000.0, min_duration_s=11.0):
+  def __init__(self, audio_dir, json_path, centroid_diff_hz=2000.0, min_duration_s=11.0, dummy_mode=False):
     with open(json_path, 'r') as f:
       self.data_all = json.load(f)
     self.audio_dir = audio_dir
     self.centroid_diff_hz = centroid_diff_hz
     self.min_duration_s = min_duration_s
     self.data_long = [d for d in self.data_all if d['sample_cnt'] / d['sample_rate'] > min_duration_s]
+    self.dummy_mode = dummy_mode
 
     if len(self.data_long) < 2:
       raise ValueError(f"Not enough tracks longer than {min_duration_s} seconds")
@@ -136,7 +140,9 @@ class AudioPairDataset(torch.utils.data.Dataset):
     pad_offset = random.randint(0, len_long-len_short)
     print(f"padding audio1 {len_short} -> {len_long}: {len_long-len_short} offset {pad_offset}")
     padded_audio = torch.nn.functional.pad(shorter_audio, (pad_offset, len_long-len_short-pad_offset))
-      
+    
+    if self.dummy_mode:
+      longer_audio = torch.zeros(longer_audio.shape)
     mix = longer_audio + padded_audio
 
     return mix, longer_audio, padded_audio, longer_fn, shorter_fn
