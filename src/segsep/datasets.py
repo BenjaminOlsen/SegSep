@@ -49,14 +49,17 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
   
   for idx, audio_file in enumerate(audio_files):
     waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
-    sc = spectral_centroid_waveform(waveform, sample_rate)
+    spectral_centroid_data = spectral_centroid_waveform(waveform, sample_rate)
+    sc_freq = spectral_centroid_data["spectral_centroid"]
+    sc_time = spectral_centroid_data["time_centroid"]
     if verbose:
         print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc:.4f}, sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
     metadata.append({
         'filename': audio_file,
         'sample_cnt': waveform.shape[1],
         'sample_rate': sample_rate,
-        'spectral_centroid': sc
+        'spectral_centroid': sc_freq,
+        'time_centroid': sc_time
     })
   
   metadata.sort(key=lambda x: x['spectral_centroid'])
@@ -107,17 +110,32 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
-        centroid_diff_hz_ij = abs(self.data_long[i]['spectral_centroid'] - self.data_all[j]['spectral_centroid'])
+        sc_1 = self.data_long[i]['spectral_centroid']
+        sc_2 = self.data_all[j]['spectral_centroid']
+        tc_1 = self.data_long[i]['time_centroid']
+        tc_2 = self.data_all[i]['time_centroid']
+        centroid_diff_hz_ij = abs(sc_1 - sc_2)
         if centroid_diff_hz_ij > self.centroid_diff_hz:
           waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
           waveform2, sample_rate2, filename2 = self.load_audio(os.path.join(self.audio_dir, self.data_all[j]['filename']))
           if waveform1 is None or waveform2 is None:
             continue
-          return waveform1, waveform2, sample_rate1, sample_rate2, filename1, filename2
+
+          info1 = {"sample_rate" : sample_rate1,
+                  "filename": filename1,
+                  "spectral_centroid": sc_1,
+                  "time_centroid": tc_1}
+          
+          info2 = {"sample_rate" : sample_rate2,
+                  "filename": filename2,
+                  "spectral_centroid": sc_2,
+                  "time_centroid": tc_2}
+          
+          return waveform1, waveform2, info1, info2
     raise ValueError("No pair found with the required spectral centroid difference")
 
   def __getitem__(self, idx):
-    x1, x2, sr1, sr2, fn1, fn2 = self.get_audio_pairs(idx)
+    x1, x2, info1, info2 = self.get_audio_pairs(idx)
 
     len1 = x1.shape[1]
     len2 = x2.shape[1]
@@ -125,13 +143,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
     if len1 < len2:
       shorter_audio = x1
       longer_audio = x2
-      longer_fn = fn2
-      shorter_fn = fn1
+      longer_info = info2
+      shorter_info= info1
     else:
       shorter_audio = x2
       longer_audio = x1
-      longer_fn = fn1
-      shorter_fn = fn2
+      longer_info = info1
+      shorter_info = info2
 
     len_short = shorter_audio.shape[1]
     len_long = longer_audio.shape[1]
@@ -145,7 +163,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
       longer_audio = torch.zeros(longer_audio.shape)
     mix = longer_audio + padded_audio
 
-    return mix, longer_audio, padded_audio, longer_fn, shorter_fn
+    return mix, longer_audio, padded_audio, longer_info, shorter_info
     
 
   def __len__(self):
