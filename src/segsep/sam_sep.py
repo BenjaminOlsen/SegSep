@@ -71,7 +71,7 @@ class SamWrapper(torch.nn.Module):
 
   # ---------------------------------------------------------------
   # returns predicted vocals:
-  def forward(self, audio_in):
+  def forward(self, audio_in, input_points=None, input_boxes=None,  ):
     # normalize the audio
     mean = torch.mean(audio_in)
     std = torch.std(audio_in)
@@ -85,7 +85,8 @@ class SamWrapper(torch.nn.Module):
     #print(f"mix_spec {mix_spec.shape}, phase_in {phase_in.shape}")
     # make sure the tensors are in the correct shape for the backbone
     outputs = self.sam_model(pixel_values=mix_spec_in.unsqueeze(0),
-                             input_boxes=None,
+                             input_points=input_points,
+                             input_boxes=input_boxes,
                              multimask_output=True)
 
     #print(f"sam_model iou_scores: {outputs.iou_scores.shape}; {outputs.iou_scores}")
