@@ -11,6 +11,13 @@ def spectral_centroid_spec(spec):
 
 # --------------------------------------------------------------------------------------------------
 def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_length=256):
+  """
+  calculates the time-freq centroid of a waveform, essentially as a 'center of mass',
+  returns:
+  {"time_centroid"  time index of centroid (idx),
+   "spectral_centroid": spectral centroid (Hz))
+  }
+  """
   stft_result = torch.stft(waveform, 
                             n_fft=n_fft, 
                             hop_length=hop_length, 
@@ -18,13 +25,23 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
                             return_complex=True)
 
   mag_spectrum = torch.abs(stft_result).squeeze()
-  freqs = torch.linspace(0, sample_rate//2, mag_spectrum.shape[0]).unsqueeze(1)
+
+  freq_indices = torch.linspace(0, sample_rate//2, mag_spectrum.shape[0]).unsqueeze(1)
+  time_indices = torch.arange(mag_spectrum.shape[1]).float()
+
+  # calculate time-centroid
+  # Sum along the frequency axis
+  intensity_sum = torch.sum(mag_spectrum, dim=0) # Assuming the spectrogram shape is [Freq, Time]
+  temporal_centroid_val = torch.sum(intensity_sum * time_indices) / torch.sum(intensity_sum)
+  temporal_centroid_val = temporal_centroid_val.item()
+    
+  # Calculate freq-centroid
   #sum the same frequency bin for all hops:
-  spectral_centroid_val = torch.sum(mag_spectrum * freqs, dim=0) / torch.sum(mag_spectrum, dim=0)
+  spectral_centroid_val = torch.sum(mag_spectrum * freq_indices, dim=0) / torch.sum(mag_spectrum, dim=0)
   #nan to zero
   spectral_centroid_val = torch.nan_to_num(spectral_centroid_val, nan=0.0)
   mean_spectral_centroid = torch.mean(spectral_centroid_val).item()
-  return mean_spectral_centroid
+  return {"time_centroid": temporal_centroid_val, "spectral_centroid": mean_spectral_centroid}
 
 # --------------------------------------------------------------------------------------------------
 def calculate_energy(audio):
