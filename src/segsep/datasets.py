@@ -163,7 +163,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
       longer_audio = torch.zeros(longer_audio.shape)
     mix = longer_audio + padded_audio
 
-    return mix, longer_audio, padded_audio, longer_info, shorter_info
+    return mix, longer_audio, padded_audio, longer_info, shorter_info, pad_offset
     
 
   def __len__(self):
