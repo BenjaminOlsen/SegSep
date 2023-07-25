@@ -14,7 +14,7 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
   """
   calculates the time-freq centroid of a waveform, essentially as a 'center of mass',
   returns:
-  {"time_centroid"  time index of centroid (idx),
+  {"time_centroid"  time of centroid (seconds),
    "spectral_centroid": spectral centroid (Hz))
   }
   """
@@ -32,7 +32,8 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
   # calculate time-centroid
   # Sum along the frequency axis
   intensity_sum = torch.sum(mag_spectrum, dim=0) # Assuming the spectrogram shape is [Freq, Time]
-  temporal_centroid_val = torch.sum(intensity_sum * time_indices) / torch.sum(intensity_sum)
+  temporal_centroid_index = torch.sum(intensity_sum * time_indices) / torch.sum(intensity_sum)
+  temporal_centroid_val = (temporal_centroid_index * hop_length) / sample_rate # convert index to seconds
   temporal_centroid_val = temporal_centroid_val.item()
     
   # Calculate freq-centroid
@@ -41,7 +42,7 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
   #nan to zero
   spectral_centroid_val = torch.nan_to_num(spectral_centroid_val, nan=0.0)
   mean_spectral_centroid = torch.mean(spectral_centroid_val).item()
-  return {"time_centroid": temporal_centroid_val, "spectral_centroid": mean_spectral_centroid}
+  return {"time_centroid_s": temporal_centroid_val, "spectral_centroid_hz": mean_spectral_centroid}
 
 # --------------------------------------------------------------------------------------------------
 def calculate_energy(audio):
