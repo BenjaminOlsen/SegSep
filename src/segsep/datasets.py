@@ -62,7 +62,7 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
         'time_centroid_s': sc_time
     })
   
-  metadata.sort(key=lambda x: x['spectral_centroid'])
+  metadata.sort(key=lambda x: x['spectral_centroid_hz'])
   
   with open(output_file, 'w') as f:
     json.dump(metadata, f)
