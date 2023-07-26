@@ -123,13 +123,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
           info1 = {"sample_rate" : sample_rate1,
                   "filename": filename1,
-                  "spectral_centroid": sc_1,
-                  "time_centroid": tc_1}
+                  "spectral_centroid_hz": sc_1,
+                  "time_centroid_s": tc_1}
           
           info2 = {"sample_rate" : sample_rate2,
                   "filename": filename2,
-                  "spectral_centroid": sc_2,
-                  "time_centroid": tc_2}
+                  "spectral_centroid_hz": sc_2,
+                  "time_centroid_s": tc_2}
           
           return waveform1, waveform2, info1, info2
     raise ValueError("No pair found with the required spectral centroid difference")
