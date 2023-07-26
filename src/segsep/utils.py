@@ -35,6 +35,7 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
   # Sum along the frequency axis
   intensity_sum = torch.sum(mag_spectrum, dim=0) # Assuming the spectrogram shape is [Freq, Time]
   temporal_centroid_index = torch.sum(intensity_sum * time_indices) / torch.sum(intensity_sum)
+  temporal_centroid_index = torch.nan_to_num(temporal_centroid_index, nan=0.0)
   temporal_centroid_val = (temporal_centroid_index * hop_length) / sample_rate # convert time bin index to seconds
   temporal_centroid_val = temporal_centroid_val.item()
     
