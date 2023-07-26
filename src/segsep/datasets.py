@@ -110,10 +110,10 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
-        sc_1 = self.data_long[i]['spectral_centroid']
-        sc_2 = self.data_all[j]['spectral_centroid']
-        tc_1 = self.data_long[i]['time_centroid']
-        tc_2 = self.data_all[i]['time_centroid']
+        sc_1 = self.data_long[i]['spectral_centroid_hz']
+        sc_2 = self.data_all[j]['spectral_centroid_hz']
+        tc_1 = self.data_long[i]['time_centroid_s']
+        tc_2 = self.data_all[i]['time_centroid_s']
         centroid_diff_hz_ij = abs(sc_1 - sc_2)
         if centroid_diff_hz_ij > self.centroid_diff_hz:
           waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
