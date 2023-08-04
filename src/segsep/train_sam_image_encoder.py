@@ -13,9 +13,7 @@ from segsep.loss_acc import si_snr, LOGL2loss_freq
 def run_train_validate(test_audio_metadata_json,
                        train_audio_metadata_json,
                        fsd_train_location,
-                       fsd_test_location,
-                       models_trainable_part,
-                       model_name):
+                       fsd_test_location):
   
   device = "cuda" if torch.cuda.is_available() else "cpu"
   
