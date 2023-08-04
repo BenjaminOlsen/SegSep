@@ -22,11 +22,17 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
   for idx, (mix_audio, source_audio) in enumerate(tqdm(dataloader)):
     optimizer.zero_grad()  
     # add a 3rd channel to each audio tensor:
-    source_audio_ch3=(source_audio[:,0]-source_audio[:,1]).unsqueeze(0)
-    mix_audio_ch3=(mix_audio[:,0]-mix_audio[:,1]).unsqueeze(0)
-
-    mix_audio = torch.cat((mix_audio, mix_audio_ch3), dim=1)
-    source_audio = torch.cat((source_audio, source_audio_ch3), dim=1)
+    if source_audio.shape[1] == 2:
+      source_audio_ch3=(source_audio[:,0]-source_audio[:,1]).unsqueeze(0)
+      source_audio = torch.cat((source_audio, source_audio_ch3), dim=1)
+    elif source_audio.shape[1] == 1:
+        source_audio = torch.cat((source_audio, source_audio, source_audio), dim=1)
+    if mix_audio.shape[1] == 2:
+      mix_audio_ch3=(mix_audio[:,0]-mix_audio[:,1]).unsqueeze(0)
+      mix_audio = torch.cat((mix_audio, mix_audio_ch3), dim=1)
+    elif mix_audio.shape[1] == 1:
+      mix_audio = torch.cat((mix_audio, mix_audio, mix_audio), dim=1)
+    
 
     track_loss = 0
     track_acc = 0
