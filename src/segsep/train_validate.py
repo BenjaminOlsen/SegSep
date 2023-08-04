@@ -59,7 +59,7 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
 
       # context for automatic mixed precision
       with torch.cuda.amp.autocast():
-        pred_audio, mix_mag, mix_phase, pred_spec = model(mix_chunk)
+        pred_audio, mix_spec_in, phase_in, pred_mag, upscaled_pred_mask, iou_scores = model(mix_chunk)
 
         if torch.isnan(pred_audio).any():
           print("prediction contains nan!")
@@ -68,8 +68,8 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
 
         # calculate loss/acc on SPEC
         source_spec, source_phase = model.encoder(source_chunk)
-        loss = loss_fn(pred_spec.squeeze(), source_spec)
-        acc = acc_fn(pred_spec, source_spec)
+        loss = loss_fn(pred_mag.squeeze(), source_spec)
+        acc = acc_fn(pred_mag, source_spec)
 
       epoch_loss += loss.item()
       track_loss += loss.item()
@@ -155,13 +155,13 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1, 
         if torch.isnan(mix_chunk).any():
           print("input data contains nan!")
           mix_chunk = torch.nan_to_num(mix_chunk)
-        pred_audio, mix_mag, mix_phase, pred_spec = model(mix_chunk)
+        pred_audio, mix_spec_in, phase_in, pred_mag, upscaled_pred_mask, iou_scores = model(mix_chunk)
         trim_idx = min(pred_audio.shape[1], source_chunk.shape[1])
 
         # calculate loss/acc on SPEC
         source_spec, source_phase = model.encoder(source_chunk)
-        loss = loss_fn(pred_spec.squeeze(), source_spec)
-        acc = acc_fn(pred_spec, source_spec)
+        loss = loss_fn(pred_mag.squeeze(), source_spec)
+        acc = acc_fn(pred_mag, source_spec)
 
         epoch_loss += loss.item()
         track_loss += loss.item()
