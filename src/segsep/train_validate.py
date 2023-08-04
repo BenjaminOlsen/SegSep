@@ -15,8 +15,8 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device):
   # each chunk results in a STFT of model.spec_dim[0] time bins
   hop_len = model.hop_length
   hop_cnt = model.spec_dim[0]
-  chunk_size = ((hop_cnt - 1) * hop_len) + model.win_length
-  print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.resample_rate:.5f}s")
+  chunk_size = model.input_chunk_size
+  print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.sample_rate:.5f}s")
 
   for idx, (mix_audio, source_audio) in enumerate(tqdm(dataloader)):
     optimizer.zero_grad()  
@@ -104,7 +104,7 @@ def validate(model, dataloader, loss_fn, acc_fn, device):
     # each chunk results in a STFT of model.spec_dim[0] time bins
     hop_len = model.hop_length
     hop_cnt = model.spec_dim[0]
-    chunk_size = ((hop_cnt - 1) * hop_len) + model.win_length
+    chunk_size = model.input_chunk_size
 
     print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.resample_rate:.5f}s")
 
