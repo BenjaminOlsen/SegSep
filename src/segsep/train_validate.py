@@ -4,7 +4,7 @@ from segsep.utils import should_skip_chunk
 from torch.utils.data import SubsetRandomSampler
 
 # --------------------------------------------------------------------------------------------------
-def train(model, dataloader, optimizer, loss_fn, acc_fn, device):
+def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
   model.train()
   epoch_loss = 0
   epoch_acc = 0
@@ -90,11 +90,12 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device):
     del source_audio
 
     torch.cuda.empty_cache()
-    print(f"TRAIN track {idx}/{len(dataloader)} loss: {track_loss}, track acc: {track_acc:.4f}, skip chunk cnt: {skip_chunk_cnt}/{chunk_cnt}")
+    if verbose:
+      print(f"TRAIN track {idx}/{len(dataloader)} loss: {track_loss}, track acc: {track_acc:.4f}, skip chunk cnt: {skip_chunk_cnt}/{chunk_cnt}")
   return epoch_loss / len(dataloader), epoch_acc / len(dataloader)
 
 # --------------------------------------------------------------------------------------------------
-def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1):
+def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1, verbose=False):
   model.eval()
   epoch_loss = 0
   epoch_acc = 0
@@ -116,7 +117,7 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1):
     hop_cnt = model.spec_dim[0]
     chunk_size = model.input_chunk_size
 
-    print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.resample_rate:.5f}s")
+    #print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.resample_rate:.5f}s")
 
     for idx, (mix_audio, source_audio) in enumerate(tqdm(subset_dataloader)):
       # add a 3rd channel to each audio tensor:
@@ -170,5 +171,6 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1):
       del mix_audio
       del source_audio
       torch.cuda.empty_cache()
-      print(f"TEST track {idx}/{len(subset_dataloader)} loss: {track_loss:.8f}, track acc: {track_acc:.4f}, skip chunk cnt: {skip_chunk_cnt}/{chunk_cnt}")
+      if verbose:
+        print(f"TEST track {idx}/{len(subset_dataloader)} loss: {track_loss:.8f}, track acc: {track_acc:.4f}, skip chunk cnt: {skip_chunk_cnt}/{chunk_cnt}")
   return epoch_loss / len(subset_dataloader), epoch_acc / len(subset_dataloader)
