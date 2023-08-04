@@ -75,6 +75,8 @@ class AudioPairDataset(torch.utils.data.Dataset):
   in a json file given in the constructor argument, according to certain conditions on the
   spectral centroid difference and a minimum duration.
 
+  if the json metadata file doesn't exist, it tries to create it using generate_audio_metadata.
+
   It returns a mix, and the separate sources from its __getitem__ using the index as a 
   random seed.
 
@@ -82,8 +84,17 @@ class AudioPairDataset(torch.utils.data.Dataset):
   task
   """
   def __init__(self, audio_dir, json_path, centroid_diff_hz=2000.0, min_duration_s=11.0, dummy_mode=False):
+
+    if json_path == None:
+      json_path = 'AudioPairDataset_metadata.json'
+    
+    if not os.path.exists(json_path):
+      print(f"creating {json_path}")
+      generate_audio_metadata(audio_dir=audio_dir, output_file=json_path, verbose=True)
+    
     with open(json_path, 'r') as f:
       self.data_all = json.load(f)
+
     self.audio_dir = audio_dir
     self.centroid_diff_hz = centroid_diff_hz
     self.min_duration_s = min_duration_s
