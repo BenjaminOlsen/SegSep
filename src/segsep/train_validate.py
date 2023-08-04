@@ -1,6 +1,7 @@
 import torch
 from tqdm.auto import tqdm
 from segsep.utils import should_skip_chunk
+from torch.utils.data import SubsetRandomSampler
 
 # --------------------------------------------------------------------------------------------------
 def train(model, dataloader, optimizer, loss_fn, acc_fn, device):
@@ -93,13 +94,22 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device):
   return epoch_loss / len(dataloader), epoch_acc / len(dataloader)
 
 # --------------------------------------------------------------------------------------------------
-def validate(model, dataloader, loss_fn, acc_fn, device):
+def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1):
   model.eval()
   epoch_loss = 0
   epoch_acc = 0
 
   with torch.inference_mode():
 
+    subset_sample_cnt = int(len(dataloader) * subset_proportion)
+    subset_indices = torch.randperm(len(dataloader))[:subset_sample_cnt]
+    subset_sampler = SubsetRandomSampler(subset_indices)
+    subset_dataloader = torch.utils.data.DataLoader(dataloader.dataset, 
+                                                    batch_size=dataloader.batch_size,
+                                                    sampler=subset_sampler,
+                                                    num_workers=dataloader.num_workers,
+                                                    pin_memory=dataloader.pin_memory)
+    
     # choose chunks of audio of chunk_size samples such that
     # each chunk results in a STFT of model.spec_dim[0] time bins
     hop_len = model.hop_length
@@ -108,7 +118,7 @@ def validate(model, dataloader, loss_fn, acc_fn, device):
 
     print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.resample_rate:.5f}s")
 
-    for idx, (mix_audio, source_audio) in enumerate(tqdm(dataloader)):
+    for idx, (mix_audio, source_audio) in enumerate(tqdm(subset_dataloader)):
       # add a 3rd channel to each audio tensor:
       source_audio_ch3=(source_audio[:,0]-source_audio[:,1]).unsqueeze(0)
       mix_audio_ch3=(mix_audio[:,0]-mix_audio[:,1]).unsqueeze(0)
@@ -160,5 +170,5 @@ def validate(model, dataloader, loss_fn, acc_fn, device):
       del mix_audio
       del source_audio
       torch.cuda.empty_cache()
-      print(f"TEST track {idx}/{len(dataloader)} loss: {track_loss:.8f}, track acc: {track_acc:.4f}, skip chunk cnt: {skip_chunk_cnt}/{chunk_cnt}")
-  return epoch_loss / len(dataloader), epoch_acc / len(dataloader)
+      print(f"TEST track {idx}/{len(subset_dataloader)} loss: {track_loss:.8f}, track acc: {track_acc:.4f}, skip chunk cnt: {skip_chunk_cnt}/{chunk_cnt}")
+  return epoch_loss / len(subset_dataloader), epoch_acc / len(subset_dataloader)
