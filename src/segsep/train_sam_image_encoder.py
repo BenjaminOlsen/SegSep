@@ -65,7 +65,8 @@ def main(args):
                                   optimizer=optimizer,
                                   loss_fn=LOGL2loss_freq,
                                   acc_fn=si_snr,
-                                  device=device)
+                                  device=device,
+                                  verbose=True)
 
     mean_train_loss = 0 if len(train_losses) == 0 else mean(train_losses)
     mean_train_acc = 0 if len(train_accs) == 0 else mean(train_accs)
@@ -83,7 +84,9 @@ def main(args):
                                     dataloader=test_dataloader,
                                     loss_fn=LOGL2loss_freq,
                                     acc_fn=si_snr,
-                                    device=device)
+                                    device=device,
+                                    subset_proportion=0.05,
+                                    verbose=True)
 
 
     mean_test_loss = 0 if len(test_losses) == 0 else mean(test_losses)
@@ -104,6 +107,8 @@ def main(args):
     if (epoch + 1) % 3 == 0:
       now = datetime.now()
       date_time = now.strftime("%m-%d-%y_%H:%M:%S")
+      model_name = "vision_encoder"
+      loss_name="LOGL2loss_freq"
       checkpoint_path = f'/content/drive/MyDrive/models/{model_name}-{loss_name}-lr{learning_rate}-{epoch}-epoch_{date_time}.pth'
       print(f"SAVING checkpoint: {checkpoint_path}")
       torch.save({
