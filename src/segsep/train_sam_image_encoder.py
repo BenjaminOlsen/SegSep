@@ -8,20 +8,22 @@ from segsep.sam_sep import SamWrapper
 from segsep.train_validate import train, validate
 from segsep.loss_acc import si_snr, LOGL2loss_freq
 
-
-def main(args):
-  test_audio_metadata_json = args.test_metadata
-  train_audio_metadata_json = args.train_metadata
-  fsd_train_location = args.train_dataset
-  fsd_test_location = args.test_dataset
-
+  
+# --------------------------------------------------------------------------------------------------
+def run_train_validate(test_audio_metadata_json,
+                       train_audio_metadata_json,
+                       fsd_train_location,
+                       fsd_test_location,
+                       models_trainable_part,
+                       model_name):
+  
   device = "cuda" if torch.cuda.is_available() else "cpu"
   
   model = SamWrapper(spec_dim=(1024,1024),
                     sample_rate=44100,
                     resample_rate=22050,
                     saved_model_state_dict=None).to(device)
-
+  model_name = "vision_encoder_finetune"
   learning_rate = 1e-5
   optimizer = torch.optim.Adam(model.sam_model.vision_encoder.parameters(), lr=learning_rate, weight_decay=0)
   
@@ -107,7 +109,6 @@ def main(args):
     if (epoch + 1) % 3 == 0:
       now = datetime.now()
       date_time = now.strftime("%m-%d-%y_%H:%M:%S")
-      model_name = "vision_encoder"
       loss_name="LOGL2loss_freq"
       checkpoint_path = f'/content/drive/MyDrive/models/{model_name}-{loss_name}-lr{learning_rate}-{epoch}-epoch_{date_time}.pth'
       print(f"SAVING checkpoint: {checkpoint_path}")
@@ -133,4 +134,12 @@ if __name__ == '__main__':
                       help='location of the Free Sound Data dataset folder for testing')
   args = parser.parse_args()
 
-  main(args)
+  test_audio_metadata_json = args.test_metadata
+  train_audio_metadata_json = args.train_metadata
+  fsd_train_location = args.train_dataset
+  fsd_test_location = args.test_dataset
+
+  run_train_validate(test_audio_metadata_json,
+                     train_audio_metadata_json,
+                     fsd_train_location,
+                     fsd_test_location)
