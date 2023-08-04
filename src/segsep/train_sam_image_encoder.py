@@ -3,7 +3,7 @@ import argparse
 
 from statistics import mean
 from datetime import datetime
-from datasets import AudioPairDataset
+from segsep.datasets import AudioPairDataset
 from segsep.sam_sep import SamWrapper
 from segsep.train_validate import train, validate
 from segsep.loss_acc import si_snr, LOGL2loss_freq
