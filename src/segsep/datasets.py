@@ -112,10 +112,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
       for j in range(i+1, len(self.data_all)):
         sc_1 = self.data_long[i]['spectral_centroid_hz']
         sc_2 = self.data_all[j]['spectral_centroid_hz']
+
         len_1 = self.data_long[i]['sample_cnt']
         len_2 = self.data_all[j]['sample_cnt']
+        
         tc_1 = self.data_long[i]['time_centroid_s']
         tc_2 = self.data_all[j]['time_centroid_s']
+
         centroid_diff_hz_ij = abs(sc_1 - sc_2)
         if centroid_diff_hz_ij > self.centroid_diff_hz:
           waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
@@ -138,7 +141,12 @@ class AudioPairDataset(torch.utils.data.Dataset):
           return waveform1, waveform2, info1, info2
     raise ValueError("No pair found with the required spectral centroid difference")
 
+  
   def __getitem__(self, idx):
+    mix, longer_audio, padded_audio, longer_info, shorter_info, pad_offset = self.get_info(idx)
+    return mix, padded_audio
+  
+  def get_info(self, idx):
     x1, x2, info1, info2 = self.get_audio_pairs(idx)
 
     len1 = x1.shape[1]
