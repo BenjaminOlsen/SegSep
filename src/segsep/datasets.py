@@ -179,7 +179,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     # put the shorter audio at a random starting location within the longer
     pad_offset = random.randint(0, len_long-len_short)
-    print(f"padding audio1 {len_short} -> {len_long}: {len_long-len_short} offset {pad_offset}")
+    #print(f"padding audio1 {len_short} -> {len_long}: {len_long-len_short} offset {pad_offset}")
     padded_audio = torch.nn.functional.pad(shorter_audio, (pad_offset, len_long-len_short-pad_offset))
     
     if self.dummy_mode:
