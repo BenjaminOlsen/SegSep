@@ -20,7 +20,7 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
   print(f"choosing audio of {chunk_size} samples -> {chunk_size/model.sample_rate:.5f}s")
 
   for idx, (mix_audio, source_audio) in enumerate(tqdm(dataloader)):
-    optimizer.zero_grad()  
+    optimizer.zero_grad()
     # add a 3rd channel to each audio tensor:
     if source_audio.shape[1] == 2:
       source_audio_ch3=(source_audio[:,0]-source_audio[:,1]).unsqueeze(0)
@@ -32,7 +32,7 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
       mix_audio = torch.cat((mix_audio, mix_audio_ch3), dim=1)
     elif mix_audio.shape[1] == 1:
       mix_audio = torch.cat((mix_audio, mix_audio, mix_audio), dim=1)
-    
+
 
     track_loss = 0
     track_acc = 0
@@ -42,7 +42,8 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
 
     mix_audio = mix_audio.squeeze().to(device)
     source_audio = source_audio.squeeze().to(device)
-    for start_idx in range(0, sample_cnt, chunk_size):
+    # omit last chunk if its size would be less than chunk_size
+    for start_idx in range(0, sample_cnt-chunk_size+1, chunk_size):
       end_idx = start_idx + chunk_size
       mix_chunk = mix_audio[:, start_idx:end_idx]
       source_chunk = source_audio[:, start_idx:end_idx]
@@ -63,7 +64,9 @@ def train(model, dataloader, optimizer, loss_fn, acc_fn, device, verbose=False):
 
         if torch.isnan(pred_audio).any():
           print("prediction contains nan!")
-          pred_audio = torch.nan_to_num(pred_audio)
+          continue
+          #pred_audio = torch.nan_to_num(pred_audio)
+
         trim_idx = min(pred_audio.shape[1], source_chunk.shape[1])
 
         # calculate loss/acc on SPEC
@@ -111,12 +114,12 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1, 
     subset_sample_cnt = int(len(dataloader) * subset_proportion)
     subset_indices = torch.randperm(len(dataloader))[:subset_sample_cnt]
     subset_sampler = SubsetRandomSampler(subset_indices)
-    subset_dataloader = torch.utils.data.DataLoader(dataloader.dataset, 
+    subset_dataloader = torch.utils.data.DataLoader(dataloader.dataset,
                                                     batch_size=dataloader.batch_size,
                                                     sampler=subset_sampler,
                                                     num_workers=dataloader.num_workers,
                                                     pin_memory=dataloader.pin_memory)
-    
+
     # choose chunks of audio of chunk_size samples such that
     # each chunk results in a STFT of model.spec_dim[0] time bins
     hop_len = model.hop_length
@@ -127,11 +130,16 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1, 
 
     for idx, (mix_audio, source_audio) in enumerate(tqdm(subset_dataloader)):
       # add a 3rd channel to each audio tensor:
-      source_audio_ch3=(source_audio[:,0]-source_audio[:,1]).unsqueeze(0)
-      mix_audio_ch3=(mix_audio[:,0]-mix_audio[:,1]).unsqueeze(0)
-
-      mix_audio = torch.cat((mix_audio, mix_audio_ch3), dim=1)
-      source_audio = torch.cat((source_audio, source_audio_ch3), dim=1)
+      if source_audio.shape[1] == 2:
+        source_audio_ch3=(source_audio[:,0]-source_audio[:,1]).unsqueeze(0)
+        source_audio = torch.cat((source_audio, source_audio_ch3), dim=1)
+      elif source_audio.shape[1] == 1:
+          source_audio = torch.cat((source_audio, source_audio, source_audio), dim=1)
+      if mix_audio.shape[1] == 2:
+        mix_audio_ch3=(mix_audio[:,0]-mix_audio[:,1]).unsqueeze(0)
+        mix_audio = torch.cat((mix_audio, mix_audio_ch3), dim=1)
+      elif mix_audio.shape[1] == 1:
+        mix_audio = torch.cat((mix_audio, mix_audio, mix_audio), dim=1)
 
       track_loss = 0
       track_acc = 0
@@ -141,7 +149,8 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1, 
 
       mix_audio = mix_audio.squeeze().to(device)
       source_audio = source_audio.squeeze().to(device)
-      for start_idx in range(0, sample_cnt, chunk_size):
+      # omit last chunk if its size would be less than chunk_size
+      for start_idx in range(0, sample_cnt-chunk_size+1, chunk_size):
         end_idx = start_idx + chunk_size
         mix_chunk = mix_audio[:, start_idx:end_idx]
         source_chunk = source_audio[:, start_idx:end_idx]
@@ -154,8 +163,12 @@ def validate(model, dataloader, loss_fn, acc_fn, device, subset_proportion=0.1, 
         #print(f"mix chunk shape {mix_chunk.shape}")
         if torch.isnan(mix_chunk).any():
           print("input data contains nan!")
-          mix_chunk = torch.nan_to_num(mix_chunk)
+          continue
+          #mix_chunk = torch.nan_to_num(mix_chunk)
         pred_audio, mix_spec_in, phase_in, pred_mag, upscaled_pred_mask, iou_scores = model(mix_chunk)
+        if torch.isnan(pred_audio).any():
+          print("predicted audio contains nan!")
+          continue
         trim_idx = min(pred_audio.shape[1], source_chunk.shape[1])
 
         # calculate loss/acc on SPEC
