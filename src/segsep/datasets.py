@@ -3,6 +3,7 @@ import json
 import torch
 import random
 import torchaudio
+from tqdm.auto import tqdm
 from pathlib import Path
 
 from segsep.utils import spectral_metadata_waveform
@@ -47,7 +48,7 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
   
   metadata = []
   
-  for idx, audio_file in enumerate(audio_files):
+  for idx, audio_file in enumerate(tqdm(audio_files)):
     waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
   
     sc_freq, spectral_bandwidth, spectral_flatness, spectral_contrast = spectral_metadata_waveform(waveform, sample_rate=sample_rate, frame_size=1024, hop_length=256)
