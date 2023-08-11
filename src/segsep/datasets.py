@@ -5,7 +5,7 @@ import random
 import torchaudio
 from pathlib import Path
 
-from segsep.utils import spectral_centroid_waveform
+from segsep.utils import spectral_centroid_waveform, spectral_bandwidth_waveform, spectral_contrast_waveform, spectral_flatness_waveform
 
 # --------------------------------------------------------------------------------------------------
 class FSD50K_Dataset(torch.utils.data.Dataset):
@@ -50,6 +50,9 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
   for idx, audio_file in enumerate(audio_files):
     waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
     spectral_centroid_data = spectral_centroid_waveform(waveform, sample_rate)
+    spectral_bandwidth = spectral_bandwidth_waveform(waveform=waveform)
+    spectral_flatness = spectral_flatness_waveform(waveform=waveform)
+    spectral_contrast = spectral_contrast_waveform(waveform=waveform)
     sc_freq = spectral_centroid_data["spectral_centroid_hz"]
     sc_time = spectral_centroid_data["time_centroid_s"]
     if verbose:
@@ -59,7 +62,10 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
         'sample_cnt': waveform.shape[1],
         'sample_rate': sample_rate,
         'spectral_centroid_hz': sc_freq,
-        'time_centroid_s': sc_time
+        'time_centroid_s': sc_time,
+        'spectral_bandwidth': spectral_bandwidth,
+        'spectral_flatness': spectral_flatness,
+        'spectral_contrast': spectral_contrast
     })
   
   metadata.sort(key=lambda x: x['spectral_centroid_hz'])
@@ -74,6 +80,8 @@ class AudioPairDataset(torch.utils.data.Dataset):
   this class defines a dataset which makes random mixtures of a given set of audio defined 
   in a json file given in the constructor argument, according to certain conditions on the
   spectral centroid difference and a minimum duration.
+
+
 
   if the json metadata file doesn't exist, it tries to create it using generate_audio_metadata.
 
