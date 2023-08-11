@@ -75,7 +75,6 @@ def spectral_flatness_waveform(waveform, frame_size=1024, hop_length=256):
   w = es.Windowing(type='hann')
   spectrum = es.Spectrum()
   flatness = es.Flatness()
-
   spectral_flatness_values = []
 
   for frame in es.FrameGenerator(audio, frameSize=frame_size, hopSize=hop_length):
@@ -147,10 +146,79 @@ def spectral_bandwidth_waveform(waveform, sample_rate=44100, frame_size=1024, ho
 
     if np.isnan(bandwidth):
       bandwidth = 0.0
-      
+
     spectral_bandwidths.append(bandwidth)
   
   return np.mean(spectral_bandwidths)
+
+# --------------------------------------------------------------------------------------------------
+def spectral_metadata_waveform(waveform, sample_rate=44100, frame_size=1024, hop_length=256):
+  """
+  Computes the spectral centroid, bandwidth, flatness, and contrast of a given waveform
+
+  Args:
+  - waveform (torch.tensor): audio
+  - sample_rate (int): sample rate in Hz
+  - frame_size (int): FFT size
+  - hop_length (int): FFT hop length
+
+  Returns:
+  tuple containing (centroid, bandwidth, flatness, contrast)
+  - spectral centroid (float): spectral centroid in Hz
+  - bandwidth (float): mean spectral bandwidth in Hz
+  - flatness (float): mean spectral flatness
+  - contrast (float): mean spectral contrast 
+  """
+  audio = waveform.squeeze().numpy()
+  w = es.Windowing(type='hann')
+  spectrum = es.Spectrum()
+
+  spectral_centroids = []
+  spectral_bandwidths = []
+
+  flatness = es.Flatness()
+  spectral_flatness_values = []
+
+  contrast = es.SpectralContrast(frameSize=frame_size, sampleRate=sample_rate)
+  spectral_contrasts = []
+
+  for frame in es.FrameGenerator(audio, frameSize=frame_size, hopSize=hop_length):
+    spec = spectrum(w(frame))
+
+    #######################################
+    # spectral flatness
+    flat = flatness(spec)
+    spectral_flatness_values.append(flat)
+
+    #######################################
+    # spectral contrast
+    sc = contrast(spec)
+    spectral_contrasts.append(sc)
+
+    ########################################
+    # spectral bandwidth & centroid
+    num_bins = spec.size # Number of frequency bins
+    freqs = np.linspace(0, sample_rate // 2, num_bins)
+    sum_spec = np.sum(spec)
+    if np.isclose(sum_spec, 0):
+      bandwidth = 0.0
+    else:
+      spectral_centroid = np.sum(freqs * spec) / sum_spec
+      bandwidth = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * spec) / np.sum(spec))
+
+    if np.isnan(bandwidth):
+      bandwidth = 0.0
+
+    spectral_centroids.append(spectral_centroid)
+    spectral_bandwidths.append(bandwidth)
+  
+  mean_flatness = np.mean(spectral_flatness_values)
+  mean_contrast = np.mean(spectral_contrasts)
+  mean_bw = np.mean(spectral_bandwidths)
+  mean_centroid = np.mean(spectral_centroids)
+
+  return mean_centroid, mean_bw, mean_flatness, mean_contrast
+
 
 # --------------------------------------------------------------------------------------------------
 def calculate_energy(audio):
