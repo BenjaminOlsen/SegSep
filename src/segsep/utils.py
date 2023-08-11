@@ -174,7 +174,7 @@ def spectral_metadata_waveform(waveform, sample_rate=44100, frame_size=1024, hop
   spectrum = es.Spectrum()
 
   num_frames = 1 + (len(audio) - frame_size) // hop_length
-  print(f"frame_size: {frame_size}, len waveform: {len(audio)}, hop_length: {hop_length} num_frames {num_frames}")
+  
   spectral_centroids = np.zeros(num_frames)
   spectral_bandwidths = np.zeros(num_frames)
 
