@@ -208,6 +208,7 @@ def spectral_metadata_waveform(waveform, sample_rate=44100, frame_size=1024, hop
     sum_spec = np.sum(spec)
     if np.isclose(sum_spec, 0):
       bandwidth = 0.0
+      spectral_centroid = 0.0
     else:
       spectral_centroid = np.sum(freqs * spec) / sum_spec
       bandwidth = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * spec) / np.sum(spec))
