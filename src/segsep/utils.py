@@ -173,27 +173,30 @@ def spectral_metadata_waveform(waveform, sample_rate=44100, frame_size=1024, hop
   w = es.Windowing(type='hann')
   spectrum = es.Spectrum()
 
-  spectral_centroids = []
-  spectral_bandwidths = []
+  num_frames = 1 + (len(waveform) - frame_size) // hop_length
+
+  spectral_centroids = [0.0] * num_frames
+  spectral_bandwidths = [0.0] * num_frames
 
   flatness = es.Flatness()
-  spectral_flatness_values = []
+  spectral_flatness_values = [0.0] * num_frames
 
   contrast = es.SpectralContrast(frameSize=frame_size, sampleRate=sample_rate)
-  spectral_contrasts = []
+  spectral_contrasts = [0.0] * num_frames
 
+  cur_frame = 0
   for frame in es.FrameGenerator(audio, frameSize=frame_size, hopSize=hop_length):
     spec = spectrum(w(frame))
 
     #######################################
     # spectral flatness
     flat = flatness(spec)
-    spectral_flatness_values.append(flat)
+    spectral_flatness_values[cur_frame] = flat
 
     #######################################
     # spectral contrast
     sc = contrast(spec)
-    spectral_contrasts.append(sc)
+    spectral_contrasts[cur_frame] = sc
 
     ########################################
     # spectral bandwidth & centroid
@@ -209,8 +212,10 @@ def spectral_metadata_waveform(waveform, sample_rate=44100, frame_size=1024, hop
     if np.isnan(bandwidth):
       bandwidth = 0.0
 
-    spectral_centroids.append(spectral_centroid)
-    spectral_bandwidths.append(bandwidth)
+    spectral_centroids[cur_frame] = spectral_centroid
+    spectral_bandwidths[cur_frame] = bandwidth
+    
+    cur_frame += 1
   
   mean_flatness = np.mean(spectral_flatness_values)
   mean_contrast = np.mean(spectral_contrasts)
