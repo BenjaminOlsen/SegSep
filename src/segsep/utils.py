@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import essentia.standard as es
 
 # --------------------------------------------------------------------------------------------------
@@ -58,12 +59,22 @@ def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_leng
 def spectral_flatness_waveform(waveform, frame_size=1024, hop_length=256):
   """
   return the mean spectral flatness of the waveform*
+
+
+  Args:
+  - waveform (torch.tensor): audio
+  - frame_size (int): FFT size
+  - hop_length (int): FFT hop length
+
+  Returns:
+  - contrast (float): mean spectral flatness 
   """
+
   audio = waveform.squeeze().numpy()
 
   w = es.Windowing(type='hann')
   spectrum = es.Spectrum()
-  flatness = es.FlatnessDB()
+  flatness = es.Flatness()
 
   spectral_flatness_values = []
 
@@ -72,19 +83,27 @@ def spectral_flatness_waveform(waveform, frame_size=1024, hop_length=256):
     flat = flatness(spec)
     spectral_flatness_values.append(flat)
   
-  tensor = torch.tensor(spectral_flatness_values)
-  return torch.mean(tensor)
+  return np.mean(spectral_flatness_values)
 
 # ------------------------------------------------------------------------------
-def spectral_contrast_waveform(waveform, frame_size=1024, hop_length=256):
+def spectral_contrast_waveform(waveform, sample_rate=44100, frame_size=1024, hop_length=256):
   """
-  returns the mean spectral contrast of the waveform
+  returns the mean spectral contrast of the waveform.
+
+  Args:
+  - waveform (torch.tensor): audio
+  - sample_rate (int): sample rate in Hz
+  - frame_size (int): FFT size
+  - hop_length (int): FFT hop length
+
+  Returns:
+  - contrast (float): mean spectral contrast 
   """
   audio = waveform.squeeze().numpy()
 
   w = es.Windowing(type='hann')
   spectrum = es.Spectrum()
-  contrast = es.SpectralContrast()
+  contrast = es.SpectralContrast(frameSize=frame_size, sampleRate=sample_rate)
 
   spectral_contrasts = []
 
@@ -93,28 +112,38 @@ def spectral_contrast_waveform(waveform, frame_size=1024, hop_length=256):
     sc = contrast(spec)
     spectral_contrasts.append(sc)
   
-  tensor = torch.tensor(spectral_contrasts)
-  return torch.mean(tensor)
+  return np.mean(spectral_contrasts)
 
 # ------------------------------------------------------------------------------
-def spectral_bandwidth_waveform(waveform, frame_size=1024, hop_length=256):
+def spectral_bandwidth_waveform(waveform, sample_rate=44100, frame_size=1024, hop_length=256):
   """
-  returns the mean spectral bandwidth of the waveform
+  Computes the mean spectral bandwidth of a waveform
+
+  Args:
+  - waveform (torch.tensor): audio
+  - sample_rate (int): sample rate in Hz
+  - frame_size (int): FFT size
+  - hop_length (int): FFT hop length
+
+  Returns:
+  - bandwidth (float): mean spectral bandwidth in Hz
   """
   audio = waveform.squeeze().numpy()
   w = es.Windowing(type='hann')
   spectrum = es.Spectrum()
-  bandwidth = es.Bandwidth()
 
   spectral_bandwidths = []
 
   for frame in es.FrameGenerator(audio, frameSize=frame_size, hopSize=hop_length):
     spec = spectrum(w(frame))
-    bw = bandwidth(spec)
-    spectral_bandwidths.append(bw)
+    num_bins = spec.size # Number of frequency bins
+    freqs = np.linspace(0, sample_rate // 2, num_bins)
+    spectral_centroid = np.sum(freqs * spec) / np.sum(spec)
+    bandwidth = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * spec) / np.sum(spec))
+
+    spectral_bandwidths.append(bandwidth)
   
-  tensor = torch.tensor(spectral_bandwidths)
-  return torch.mean(tensor)
+  return np.mean(spectral_bandwidths)
 
 # --------------------------------------------------------------------------------------------------
 def calculate_energy(audio):
