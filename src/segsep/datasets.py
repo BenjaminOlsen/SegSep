@@ -56,7 +56,7 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
     sc_freq = spectral_centroid_data["spectral_centroid_hz"]
     sc_time = spectral_centroid_data["time_centroid_s"]
     if verbose:
-        print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc_freq:.4f}, time centroid: {sc_time}, sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
+        print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc_freq:.4f}, time centroid: {sc_time}, spec bandwidth: {spectral_bandwidth:.4f}, contrast: {spectral_contrast:.4f}, flatness: {spectral_flatness:.4f} sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
     metadata.append({
         'filename': audio_file,
         'sample_cnt': waveform.shape[1],
