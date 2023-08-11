@@ -138,9 +138,16 @@ def spectral_bandwidth_waveform(waveform, sample_rate=44100, frame_size=1024, ho
     spec = spectrum(w(frame))
     num_bins = spec.size # Number of frequency bins
     freqs = np.linspace(0, sample_rate // 2, num_bins)
-    spectral_centroid = np.sum(freqs * spec) / np.sum(spec)
-    bandwidth = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * spec) / np.sum(spec))
+    sum_spec = np.sum(spec)
+    if np.isclose(sum_spec, 0):
+      bandwidth = 0.0
+    else:
+      spectral_centroid = np.sum(freqs * spec) / sum_spec
+      bandwidth = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * spec) / np.sum(spec))
 
+    if np.isnan(bandwidth):
+      bandwidth = 0.0
+      
     spectral_bandwidths.append(bandwidth)
   
   return np.mean(spectral_bandwidths)
