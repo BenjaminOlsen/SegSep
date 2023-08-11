@@ -5,7 +5,7 @@ import random
 import torchaudio
 from pathlib import Path
 
-from segsep.utils import spectral_centroid_waveform, spectral_bandwidth_waveform, spectral_contrast_waveform, spectral_flatness_waveform
+from segsep.utils import spectral_metadata_waveform
 
 # --------------------------------------------------------------------------------------------------
 class FSD50K_Dataset(torch.utils.data.Dataset):
@@ -49,20 +49,16 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
   
   for idx, audio_file in enumerate(audio_files):
     waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
-    spectral_centroid_data = spectral_centroid_waveform(waveform, sample_rate)
-    spectral_bandwidth = spectral_bandwidth_waveform(waveform=waveform)
-    spectral_flatness = spectral_flatness_waveform(waveform=waveform)
-    spectral_contrast = spectral_contrast_waveform(waveform=waveform)
-    sc_freq = spectral_centroid_data["spectral_centroid_hz"]
-    sc_time = spectral_centroid_data["time_centroid_s"]
+  
+    sc_freq, spectral_bandwidth, spectral_flatness, spectral_contrast = spectral_metadata_waveform(waveform, sample_rate=sample_rate, frame_size=1024, hop_length=256)
+
     if verbose:
-        print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc_freq:.4f}, time centroid: {sc_time}, spec bandwidth: {spectral_bandwidth:.4f}, contrast: {spectral_contrast:.4f}, flatness: {spectral_flatness:.4f} sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
+        print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc_freq:.4f}, spec bandwidth: {spectral_bandwidth:.4f}, contrast: {spectral_contrast:.4f}, flatness: {spectral_flatness:.4f} sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
     metadata.append({
         'filename': audio_file,
         'sample_cnt': waveform.shape[1],
         'sample_rate': sample_rate,
         'spectral_centroid_hz': sc_freq,
-        'time_centroid_s': sc_time,
         'spectral_bandwidth': spectral_bandwidth,
         'spectral_flatness': spectral_flatness,
         'spectral_contrast': spectral_contrast
@@ -135,8 +131,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
         len_1 = self.data_long[i]['sample_cnt']
         len_2 = self.data_all[j]['sample_cnt']
         
-        tc_1 = self.data_long[i]['time_centroid_s']
-        tc_2 = self.data_all[j]['time_centroid_s']
+        
 
         centroid_diff_hz_ij = abs(sc_1 - sc_2)
         if centroid_diff_hz_ij > self.centroid_diff_hz:
@@ -148,13 +143,11 @@ class AudioPairDataset(torch.utils.data.Dataset):
           info1 = {"sample_rate" : sample_rate1,
                   "filename": filename1,
                   "spectral_centroid_hz": sc_1,
-                  "time_centroid_s": tc_1,
                   "sample_cnt": len_1}
           
           info2 = {"sample_rate" : sample_rate2,
                   "filename": filename2,
                   "spectral_centroid_hz": sc_2,
-                  "time_centroid_s": tc_2,
                   "sample_cnt": len_2}
           
           return waveform1, waveform2, info1, info2
