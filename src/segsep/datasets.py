@@ -51,21 +51,26 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
   for idx, audio_file in enumerate(tqdm(audio_files)):
     waveform, sample_rate = torchaudio.load(os.path.join(audio_dir, audio_file))
   
-    sc_freq, spectral_bandwidth, spectral_flatness, spectral_contrast = spectral_metadata_waveform(waveform, sample_rate=sample_rate, frame_size=1024, hop_length=256)
+    spectral_centroid, spectral_bandwidth, spectral_flatness, spectral_contrast = spectral_metadata_waveform(waveform, sample_rate=sample_rate, frame_size=1024, hop_length=256)
 
     if verbose:
-        print(f"generating audo metadata {idx}/{len(audio_files)} : spectral centroid {sc_freq:.4f}, spec bandwidth: {spectral_bandwidth:.4f}, contrast: {spectral_contrast:.4f}, flatness: {spectral_flatness:.4f} sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
+        print(f"generating audio metadata {idx}/{len(audio_files)} (max|min|mean|std):\
+                spectral centroid {spectral_centroid['max']:.4f}|{spectral_centroid['min']:.4f}|{spectral_centroid['mean']:.4f}|{spectral_centroid['std']:.4f}, \
+                spec bandwidth: {spectral_bandwidth['max']:.4f}|{spectral_bandwidth['min']:.4f}|{spectral_bandwidth['mean']:.4f}|{spectral_bandwidth['std']:.4f}, \
+                contrast: {spectral_contrast['max']:.4f}|{spectral_contrast['min']:.4f}|{spectral_contrast['mean']:.4f}|{spectral_contrast['std']:.4f}, \
+                flatness: {spectral_flatness['max']:.4f}|{spectral_flatness['min']:.4f}|{spectral_flatness['mean']:.4f}|{spectral_flatness['std']:.4f}, \
+                sample_cnt {waveform.shape[1]}, sr: {sample_rate}")
     metadata.append({
         'filename': audio_file,
         'sample_cnt': waveform.shape[1],
         'sample_rate': sample_rate,
-        'spectral_centroid_hz': sc_freq,
+        'spectral_centroid': spectral_centroid,
         'spectral_bandwidth': spectral_bandwidth,
         'spectral_flatness': spectral_flatness,
         'spectral_contrast': spectral_contrast
     })
   
-  metadata.sort(key=lambda x: x['spectral_centroid_hz'])
+  metadata.sort(key=lambda x: x['spectral_flatness']['mean'])
   
   with open(output_file, 'w') as f:
     json.dump(metadata, f)
@@ -126,14 +131,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
-        sc_1 = self.data_long[i]['spectral_centroid_hz']
-        sc_2 = self.data_all[j]['spectral_centroid_hz']
+        sc_1 = self.data_long[i]['spectral_centroid']['mean']
+        sc_2 = self.data_all[j]['spectral_centroid']['mean']
 
         len_1 = self.data_long[i]['sample_cnt']
         len_2 = self.data_all[j]['sample_cnt']
         
-        
-
+        #TODO: add other stats!
         centroid_diff_hz_ij = abs(sc_1 - sc_2)
         if centroid_diff_hz_ij > self.centroid_diff_hz:
           waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
@@ -143,12 +147,12 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
           info1 = {"sample_rate" : sample_rate1,
                   "filename": filename1,
-                  "spectral_centroid_hz": sc_1,
+                  "spectral_centroid": sc_1,
                   "sample_cnt": len_1}
           
           info2 = {"sample_rate" : sample_rate2,
                   "filename": filename2,
-                  "spectral_centroid_hz": sc_2,
+                  "spectral_centroid": sc_2,
                   "sample_cnt": len_2}
           
           return waveform1, waveform2, info1, info2
