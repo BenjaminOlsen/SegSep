@@ -12,6 +12,18 @@ def spectral_centroid_spec(spec):
   return centroid
 
 # --------------------------------------------------------------------------------------------------
+def arr_stats(arr: np.array):
+  """
+  returns a dictionary containing max, min, mean, std of the array
+  """
+  return {
+    "max": np.max(arr),
+    "min": np.min(arr),
+    "mean": np.mean(arr),
+    "std": np.std(arr)
+    }
+
+# --------------------------------------------------------------------------------------------------
 def spectral_centroid_waveform(waveform, sample_rate=44100, n_fft=1024, hop_length=256):
   """
   calculates the time-freq centroid of a waveform, essentially as a 'center of mass',
@@ -221,12 +233,12 @@ def spectral_metadata_waveform(waveform, sample_rate=44100, frame_size=1024, hop
     
     cur_frame += 1
   
-  mean_flatness = np.mean(spectral_flatness_values)
-  mean_contrast = np.mean(spectral_contrasts)
-  mean_bw = np.mean(spectral_bandwidths)
-  mean_centroid = np.mean(spectral_centroids)
+  flat_data = arr_stats(spectral_flatness_values)
+  contrast_data = arr_stats(spectral_contrasts)
+  bw_data = arr_stats(spectral_bandwidths)
+  centroid_data = arr_stats(spectral_centroids)
 
-  return mean_centroid, mean_bw, mean_flatness, mean_contrast
+  return centroid_data, bw_data, flat_data, contrast_data
 
 
 # --------------------------------------------------------------------------------------------------
