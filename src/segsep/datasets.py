@@ -81,9 +81,16 @@ class AudioPairDataset(torch.utils.data.Dataset):
   """
   this class defines a dataset which makes random mixtures of a given set of audio defined 
   in a json file given in the constructor argument, according to certain conditions on the
-  spectral centroid difference and a minimum duration.
+  certain characteristics of the audio.
 
+  Those characteristics are:
+  1) a minimimum duration
+  2) minimum difference in mean spectral centroid
+  3) minimum difference in mean spectral bandwidth
+  4) minimum difference in mean spectral contrast
+  5) minimum difference in mean spectral flatness
 
+  The default values are taken as the mean standard deviation of the FSD dev dataset
 
   if the json metadata file doesn't exist, it tries to create it using generate_audio_metadata.
 
@@ -93,7 +100,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
   dummy_mode creates a mix with the longer of the audios set to 0 for a more event-detection
   task
   """
-  def __init__(self, audio_dir, json_path, centroid_diff_hz=2000.0, min_duration_s=11.0, dummy_mode=False):
+  def __init__(self, audio_dir, json_path, 
+               centroid_diff_hz=2000.0, 
+               bandwidth_diff=1350.0,  
+               flatness_diff=0.16,
+               contrast_diff=0.07,
+               min_duration_s=11.0, 
+               dummy_mode=False):
 
     if json_path == None:
       json_path = 'AudioPairDataset_metadata.json'
@@ -107,6 +120,9 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     self.audio_dir = audio_dir
     self.centroid_diff_hz = centroid_diff_hz
+    self.bandwidth_diff = bandwidth_diff
+    self.flatness_diff = flatness_diff
+    self.contrast_diff = contrast_diff
     self.min_duration_s = min_duration_s
     self.data_long = [d for d in self.data_all if d['sample_cnt'] / d['sample_rate'] > min_duration_s]
     self.dummy_mode = dummy_mode
@@ -134,12 +150,24 @@ class AudioPairDataset(torch.utils.data.Dataset):
         sc_1 = self.data_long[i]['spectral_centroid']['mean']
         sc_2 = self.data_all[j]['spectral_centroid']['mean']
 
+        flat_1 = self.data_long[i]['spectral_flatness']['mean']
+        flat_2 = self.data_all[j]['spectral_flatness']['mean']
+
+        bw_1 = self.data_long[i]['spectral_bandwidth']['mean']
+        bw_2 = self.data_all[j]['spectral_bandwidth']['mean']
+
+        cont_1 = self.data_long[i]['spectral_contrast']['mean']
+        cont_2 = self.data_all[j]['spectral_contrast']['mean']
+
         len_1 = self.data_long[i]['sample_cnt']
         len_2 = self.data_all[j]['sample_cnt']
         
-        #TODO: add other stats!
-        centroid_diff_hz_ij = abs(sc_1 - sc_2)
-        if centroid_diff_hz_ij > self.centroid_diff_hz:
+        
+        if (abs(sc_1 - sc_2) > self.centroid_diff_hz and
+            abs(flat_1 - flat_2) > self.flatness_diff and
+            abs(bw_1 - bw_2) > self.bandwidth_diff and
+            abs(cont_1 - cont_2) > self.contrast_diff):
+
           waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
           waveform2, sample_rate2, filename2 = self.load_audio(os.path.join(self.audio_dir, self.data_all[j]['filename']))
           if waveform1 is None or waveform2 is None:
