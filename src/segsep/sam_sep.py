@@ -34,7 +34,9 @@ class SamWrapper(torch.nn.Module):
       self.sam_model = SamModel.from_pretrained("facebook/sam-vit-base")
     else:
       config = SamConfig() # dummy config
-      self.sam_model = SamModel()
+      self.sam_model = SamModel(config)
+      self.sam_model.load_state_dict(saved_model_state_dict)
+      
 
   # ---------------------------------------------------------------
   def encoder(self, x): # returns magnitude spectrum, phase spectrum
@@ -71,7 +73,7 @@ class SamWrapper(torch.nn.Module):
 
   # ---------------------------------------------------------------
   # returns predicted vocals:
-  def forward(self, audio_in, input_points=None, input_boxes=None,  ):
+  def forward(self, audio_in, input_points=None, input_boxes=None):
     # normalize the audio
     mean = torch.mean(audio_in)
     std = torch.std(audio_in)
@@ -97,7 +99,7 @@ class SamWrapper(torch.nn.Module):
     
     #print(f"sam_model outputs pred_masks shape: {outputs.pred_masks.shape}")
     pred_masks = outputs.pred_masks.squeeze(1)
-    upscaled_pred_mask = torch.nn.functional.interpolate(pred_masks, size=(1024,1024), mode='bicubic')
+    upscaled_pred_mask = torch.nn.functional.interpolate(pred_masks, size=(1024,1024), mode='bilinear')
 
     # filter the predicted mask with the original mix spectrum magnitude
     pred_mag = torch.mul(upscaled_pred_mask, mix_spec_in)
