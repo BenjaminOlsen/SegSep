@@ -20,7 +20,7 @@ def LOGL2loss_freq(Y1, Y2):
 def LOGL1loss_freq(Y1, Y2):
   assert (Y1.shape == Y2.shape), f"Shapes do not match: {Y1.shape} vs {Y2.shape}"
   N = Y1.numel()
-  return (10/(2*N))*torch.log10(torch.sum(torch.abs(Y1) - torch.abs(Y2))+ 1e-7)
+  return (10/(2*N))*torch.log10(torch.sum(torch.abs(torch.abs(Y1) - torch.abs(Y2)))+ 1e-7)
 
 # --------------------------------------------------------------------------------------------------
 def L1loss_freq(Y1, Y2):
