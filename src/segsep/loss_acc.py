@@ -32,7 +32,11 @@ def L1loss_freq(Y1, Y2):
 def L2loss_freq(Y1, Y2):
   assert (Y1.shape == Y2.shape), f"Shapes do not match: {Y1.shape} vs {Y2.shape}"
   N = Y1.numel()
-  return (1/2*N)*torch.sum((torch.abs(Y1) - torch.abs(Y2))**2)
+  
+  r = (1/2*N)*torch.sum((torch.abs(Y1) - torch.abs(Y2))**2)
+  if torch.isnan(r):
+    print(f"r isnan")
+  return torch.nan_to_num(r)
 
 # --------------------------------------------------------------------------------------------------
 def si_snr(pred_audio, target_audio):
