@@ -6,7 +6,7 @@ from transformers import SamModel, SamConfig
 from segsep.utils import should_skip_chunk
 
 # --------------------------------------------------------------------------------------------------
-class _SamWrapper(torch.nn.Module):
+class SamWrapper(torch.nn.Module):
   def __init__(self,
                spec_dim=(1024, 1024),
                sample_rate=44100,
