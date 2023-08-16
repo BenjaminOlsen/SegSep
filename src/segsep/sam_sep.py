@@ -6,7 +6,7 @@ from transformers import SamModel, SamConfig
 from segsep.utils import should_skip_chunk
 
 # --------------------------------------------------------------------------------------------------
-class SamWrapper(torch.nn.Module):
+class _SamWrapper(torch.nn.Module):
   def __init__(self,
                spec_dim=(1024, 1024),
                sample_rate=44100,
@@ -56,7 +56,7 @@ class SamWrapper(torch.nn.Module):
                     onesided=True,
                     return_complex=True)
 
-    return torch.abs(X), torch.angle(X)
+    return X
 
   # ---------------------------------------------------------------
   def decoder(self, X): #takes complex spectrum, returns audio
@@ -73,19 +73,34 @@ class SamWrapper(torch.nn.Module):
 
   # ---------------------------------------------------------------
   # returns predicted vocals:
-  def forward(self, audio_in, input_points=None, input_boxes=None):
+  def forward(self, 
+              audio_in, 
+              input_points=None, 
+              input_boxes=None, 
+              upscale_mask=False, 
+              debug=False):
     # normalize the audio
     mean = torch.mean(audio_in)
     std = torch.std(audio_in)
     audio_in = (audio_in - mean) / (std + 1e-8)
 
     if torch.isnan(audio_in).any():
-      print("input audio contains nan after normalization!!!")
+      print("forward(): input audio contains nan after normalization!!!")
+    
     # get the magnitude and phase spectra from the encoder (STFT)
-    mix_spec_in, phase_in = self.encoder(audio_in)
+    X = self.encoder(audio_in)
+    input_spec_shape = X.shape
 
-    #print(f"mix_spec {mix_spec.shape}, phase_in {phase_in.shape}")
-    # make sure the tensors are in the correct shape for the backbone
+    mix_spec_in = torch.abs(X)
+    phase_in = torch.angle(X)
+
+    if debug:
+      print(f"forward(): mix_spec {mix_spec_in.shape}, phase_in {phase_in.shape}")
+    # make sure the tensors are in the correct shape for the backbone : 1024,1024
+    if(mix_spec_in.shape[0] != 1024 or mix_spec_in.shape[1] != 1024):
+      if debug: 
+        print(f"forward(): interpolating input mix spec from {mix_spec_in.shape} to (3,1024,1024)")
+      mix_spec_in = torch.nn.functional.interpolate(mix_spec_in.unsqueeze(0), size=(1024,1024), mode='bilinear').squeeze(0)
     outputs = self.sam_model(pixel_values=mix_spec_in.unsqueeze(0),
                              input_points=input_points,
                              input_boxes=input_boxes,
@@ -97,15 +112,42 @@ class SamWrapper(torch.nn.Module):
     #mask = self.sam_model.mask_decoder(img_embeddings.last_hidden_state)
     #print(f"mask decoder output: {mask}")
     
-    #print(f"sam_model outputs pred_masks shape: {outputs.pred_masks.shape}")
     pred_masks = outputs.pred_masks.squeeze(1)
-    upscaled_pred_mask = torch.nn.functional.interpolate(pred_masks, size=(1024,1024), mode='bilinear')
+    if debug:
+      print(f"forward(): sam_model outputs pred_masks shape: {outputs.pred_masks.shape}; pred_masks.shape: {pred_masks.shape}")
+    
+    
+    if upscale_mask:
+      upscale_size = (mix_spec_in.shape[1], mix_spec_in.shape[2])
+      pred_masks = torch.nn.functional.interpolate(pred_masks, size=upscale_size, mode='bilinear')
+      # filter the predicted mask with the original mix spectrum magnitude
+      if debug:
+        print(f"forward(): multiplying pred mask {pred_masks.shape} and mix spec {mix_spec_in.shape}")
+      pred_mag = torch.mul(pred_masks, mix_spec_in)
+      if debug:
+        print(f"forward(): upscaling predicted mask from {pred_masks.shape} to {pred_masks.shape}")
 
-    # filter the predicted mask with the original mix spectrum magnitude
-    pred_mag = torch.mul(upscaled_pred_mask, mix_spec_in)
+    else: #downscale the mix_spec_in to pred_mag's size 
+      kernel_size = (2,2) # ...first do a average pooling
+      mix_spec_avg_pool = torch.nn.functional.avg_pool2d(mix_spec_in, kernel_size)
+      downscale_size = (pred_masks.shape[2], pred_masks.shape[3])
+      
+      downscaled_mix_spec = torch.nn.functional.interpolate(mix_spec_in.unsqueeze(0), size=downscale_size, mode='bilinear').squeeze(0)
 
+      if debug:
+        print(f"forward(): downscaling mix spec from {mix_spec_in.shape} -> avg pool {mix_spec_avg_pool.shape} -> interpolate {downscaled_mix_spec.shape}")
+
+      pred_mag = torch.mul(pred_masks, downscaled_mix_spec)
+      
     # resynthesize the estimated source audio
+    if pred_mag.squeeze().shape != input_spec_shape:
+      if debug:
+        print(f"forward(): resizing predicted mag spec from {pred_mag.shape} to {input_spec_shape}")
+      pred_mag = torch.nn.functional.interpolate(pred_mag, size=(input_spec_shape[1], input_spec_shape[2]), mode='bilinear')
+
     pred = (pred_mag * torch.cos(phase_in)) + (1.0j * pred_mag * torch.sin(phase_in))
-    #print(f"pred.shape: {pred.shape}")
+    
+    if debug:
+      print(f"forward(): predicted spectrum shape: {pred.shape}")
     pred_audio = self.decoder(pred.squeeze())
-    return pred_audio, mix_spec_in, phase_in, pred_mag, upscaled_pred_mask.squeeze(), outputs.iou_scores.squeeze()
+    return pred_audio, mix_spec_in, phase_in, pred_mag, pred_masks.squeeze(), outputs.iou_scores.squeeze()
