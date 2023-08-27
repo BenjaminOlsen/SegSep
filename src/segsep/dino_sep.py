@@ -14,25 +14,32 @@ class FeatureTransformer(torch.nn.Module):
     self.transformer = torch.nn.TransformerEncoder(self.transformerlayer, num_layers=1)
     self.conv = torch.nn.Conv1d(in_channels, num_channels, kernel_size=1)
 
-  def forward(self, x):
+  def forward(self, x, debug=False):
     # x shape: in_channels, height, width
-    print(f"feature transformer input shape: {x.shape} in_channels, height, width")
+    if debug:
+      print(f"feature transformer input shape: {x.shape} in_channels, height, width")
     x = x.view(self.in_channels, -1)  # flatten the height and width into the sequence dimension
-    print(f"feature transformerx.shape after flatten the height and width into the sequence dimension {x.shape}")
+    if debug:
+      print(f"feature transformerx.shape after flatten the height and width into the sequence dimension {x.shape}")
     x = x.transpose(0, 1)  # swap the sequence and channels dimensions
-    print(f"feature transformerx.shape after swapping sequence/channel dimensions {x.shape} num_tokens, in_channels")
+    if debug:
+      print(f"feature transformerx.shape after swapping sequence/channel dimensions {x.shape} num_tokens, in_channels")
     # x shape: num_tokens, in_channels
     x = self.transformer(x.unsqueeze(1))  # transformer on the token dimension, add a batch dimension
-    print(f"feature transformerx.shape after transformer pass on the token dimension and adding batch dim{ x.shape} num_tokens, batch idx in_channels")
+    if debug:
+      print(f"feature transformerx.shape after transformer pass on the token dimension and adding batch dim{ x.shape} num_tokens, batch idx in_channels")
     x = x.transpose(0, 1)  # swap back the sequence and channels dimensions
-    print(f"feature transformerx.shape back to batch, in_channels, num_tokens: {x.shape}")
+    if debug:
+      print(f"feature transformerx.shape back to batch, in_channels, num_tokens: {x.shape}")
     x = self.conv(x)  # conv1d on the token dimension
-    print(f"feature transformerx.shape after convolution along the token dimension: {x.shape}")
+    if debug:
+      print(f"feature transformerx.shape after convolution along the token dimension: {x.shape}")
     # x shape: num_channels, num_tokens
     #x = x.view(self.num_channels, self.tokenW, self.tokenH)  # reshape back to 3D
     x = x.view(-1, self.num_channels, self.tokenH, self.tokenW)
     # x shape: num_channels, height, width
-    print(f"feature transformerx.shape back to 3D view {x.shape} [num channels, feature map width, height]")
+    if debug:
+      print(f"feature transformerx.shape back to 3D view {x.shape} [num channels, feature map width, height]")
     return x
   
 # --------------------------------------------------------------------------------------------------
@@ -139,12 +146,13 @@ class DinoSeg(torch.nn.Module):
     return x
 
   # ---------------------------------------------------------------
-  def forward(self, audio_in):
+  def forward(self, audio_in, debug=False):
     # normalize the audio
     mean = torch.mean(audio_in)
     std = torch.std(audio_in)
     audio_in = (audio_in - mean) / (std + 1e-8)
-    print(f"forward pass audio in shape: {audio_in.shape}")
+    if debug:
+      print(f"forward pass audio in shape: {audio_in.shape}")
 
     if torch.isnan(audio_in).any():
       print("input audio contains nan after normalization!!!")
@@ -152,13 +160,16 @@ class DinoSeg(torch.nn.Module):
     # get the magnitude and phase spectra from the encoder (STFT)
     mix_spec_in, phase_in = self.encoder(audio_in)
 
-    print(f"self.encoder output shape: {mix_spec_in.shape}")
+    if debug:
+      print(f"self.encoder output shape: {mix_spec_in.shape}")
 
     if phase_in.shape[0] == 2:
-      print(f"forward: adding phase 3rd channel")
+      if debug:
+        print(f"forward: adding phase 3rd channel")
       phase_in = torch.cat((phase_in, phase_in[0].unsqueeze(0)), dim=0)
     if mix_spec_in.shape[0] == 2:
-      print(f"forward: adding mix sum mag as 3rd channel")
+      if debug:
+        print(f"forward: adding mix sum mag as 3rd channel")
       mix_spec_sum = mix_spec_in.sum(dim=0,keepdim=True)
       mix_spec_in = torch.cat((mix_spec_in, mix_spec_sum), dim=0)
 
@@ -166,25 +177,33 @@ class DinoSeg(torch.nn.Module):
     mix_spec = 10*torch.log10(mix_spec_in + 1e-8)
 
     mix_spec = mix_spec.unsqueeze(0)
-    print(f"mix_spec before dino pass: {mix_spec.shape}")
+    if debug:
+      print(f"mix_spec before dino pass: {mix_spec.shape}")
     with torch.no_grad():
         features = self.dinov2.forward_features(mix_spec)['x_norm_patchtokens']
-    print(f"dino output features: {features.shape}")
-    #x = self.selu(self.classlayer_224(features))
+    if debug:        
+      print(f"dino output features: {features.shape}")
+    #x = self.selu(self.classlayer_224(features, debug=debug))
     #x = self.to_224(x)
-    x = self.selu(self.classlayer_448(features))
-    print(f"output of FeatureTransformer: 1 x.shape {x.shape} [num_channels, width, height]")
+    x = self.selu(self.classlayer_448(features, debug=debug))
+    if debug:
+      print(f"output of FeatureTransformer: 1 x.shape {x.shape} [num_channels, width, height]")
     x = self.to_448(x)
-    print(f"head 2 x.shape after convolutional upsampler to 448 {x.shape} [num_channels, width, height]")
+    if debug:
+      print(f"head 2 x.shape after convolutional upsampler to 448 {x.shape} [num_channels, width, height]")
     pred_mask = self.conv2seg(x)
-    print(f"pred mask {pred_mask.shape} output of conv2seg")
+    if debug:
+      print(f"pred mask {pred_mask.shape} output of conv2seg")
     pred_mask_upscaled = torch.nn.functional.interpolate(pred_mask, size=(448, 448), mode='bilinear')
-    print(f"pred mask upscaled {pred_mask_upscaled.shape}")
+    if debug:
+      print(f"pred mask upscaled {pred_mask_upscaled.shape}")
     pred_filtered_mag = pred_mask_upscaled * mix_spec_in
     pred_spec = pred_filtered_mag * torch.cos(phase_in) + 1.0j * pred_filtered_mag * torch.sin(phase_in)
-    print(f"pred spec {pred_spec.shape}")
+    if debug:
+      print(f"pred spec {pred_spec.shape}")
     #print(f"pred spec shape : {pred_spec.shape}")
     pred_audio = self.decoder(pred_spec.squeeze(0))
-    print(f"pred audio {pred_audio.shape}")
+    if debug:
+      print(f"pred audio {pred_audio.shape}")
     #print(f"pred audio shape: {pred_audio.shape}")
     return pred_audio, mix_spec_in, phase_in, pred_filtered_mag, pred_mask_upscaled
