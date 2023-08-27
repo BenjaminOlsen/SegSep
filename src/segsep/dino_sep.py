@@ -43,9 +43,8 @@ class FeatureTransformer(torch.nn.Module):
     return x
   
 # --------------------------------------------------------------------------------------------------
-class DinoSeg(torch.nn.Module):
-  def __init__(self, n_fft=2048,
-               win_length=2047,
+class DinoWrapper(torch.nn.Module):
+  def __init__(self,
                spec_dim=(1024, 1024),
                sample_rate=44100,
                resample_rate=22050,
@@ -54,8 +53,6 @@ class DinoSeg(torch.nn.Module):
     n=512
     self.dinov2 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
 
-    self.n_fft = n_fft
-    self.win_length = win_length
     self.spec_dim = spec_dim
     self.n_fft = 2*(self.spec_dim[1]-1)
     self.win_length = self.n_fft
