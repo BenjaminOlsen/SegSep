@@ -65,7 +65,7 @@ class DinoWrapper(torch.nn.Module):
     
     if not self.input_chunk_size.is_integer():
       print(f"WARNING, noninteger input chunk size, choose your sample rate, resample rate to divide cleanly!")
-    print(f"SamWrapper model n_fft: {self.n_fft}, win len: {self.win_length}, hop len: {self.hop_length}, sample/resample: {self.sample_rate / self.resample_rate} -> input_chunk_size {self.input_chunk_size}")
+    print(f"DinoWrapper model n_fft: {self.n_fft}, win len: {self.win_length}, hop len: {self.hop_length}, sample/resample: {self.sample_rate / self.resample_rate} -> input_chunk_size {self.input_chunk_size}")
     
     self.input_chunk_size = int(self.input_chunk_size)
     self.classlayer_448 = FeatureTransformer(in_channels=1024,num_channels=n,tokenW=32,tokenH=32)
