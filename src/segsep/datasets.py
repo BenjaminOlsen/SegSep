@@ -139,7 +139,29 @@ class AudioPairDataset(torch.utils.data.Dataset):
     except Exception as e:
       print(f"Error loading audio file {filename}: {e}")
       return None, None
-  
+    
+  def audio_pair_satisfies_condition(self, idx_long, idx_all):
+    sc_1 = self.data_long[idx_long]['spectral_centroid']['mean']
+    sc_2 = self.data_all[idx_all]['spectral_centroid']['mean']
+
+    flat_1 = self.data_long[idx_long]['spectral_flatness']['mean']
+    flat_2 = self.data_all[idx_all]['spectral_flatness']['mean']
+
+    bw_1 = self.data_long[idx_long]['spectral_bandwidth']['mean']
+    bw_2 = self.data_all[idx_all]['spectral_bandwidth']['mean']
+
+    cont_1 = self.data_long[idx_long]['spectral_contrast']['mean']
+    cont_2 = self.data_all[idx_all]['spectral_contrast']['mean']
+
+    len_1 = self.data_long[idx_long]['sample_cnt']
+    len_2 = self.data_all[idx_all]['sample_cnt']
+    
+    
+    return (abs(sc_1 - sc_2) > self.centroid_diff_hz and
+            abs(flat_1 - flat_2) > self.flatness_diff and
+            abs(bw_1 - bw_2) > self.bandwidth_diff and
+            abs(cont_1 - cont_2) > self.contrast_diff)
+
   def get_audio_pairs(self, idx):
     torch.manual_seed(idx)
     random.shuffle(self.data_long)
@@ -147,41 +169,16 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
-        sc_1 = self.data_long[i]['spectral_centroid']['mean']
-        sc_2 = self.data_all[j]['spectral_centroid']['mean']
 
-        flat_1 = self.data_long[i]['spectral_flatness']['mean']
-        flat_2 = self.data_all[j]['spectral_flatness']['mean']
-
-        bw_1 = self.data_long[i]['spectral_bandwidth']['mean']
-        bw_2 = self.data_all[j]['spectral_bandwidth']['mean']
-
-        cont_1 = self.data_long[i]['spectral_contrast']['mean']
-        cont_2 = self.data_all[j]['spectral_contrast']['mean']
-
-        len_1 = self.data_long[i]['sample_cnt']
-        len_2 = self.data_all[j]['sample_cnt']
-        
-        
-        if (abs(sc_1 - sc_2) > self.centroid_diff_hz and
-            abs(flat_1 - flat_2) > self.flatness_diff and
-            abs(bw_1 - bw_2) > self.bandwidth_diff and
-            abs(cont_1 - cont_2) > self.contrast_diff):
-
+        if self.audio_pair_satisfies_condition(idx_long=i, idx_all=j):
           waveform1, sample_rate1, filename1 = self.load_audio(os.path.join(self.audio_dir, self.data_long[i]['filename']))
           waveform2, sample_rate2, filename2 = self.load_audio(os.path.join(self.audio_dir, self.data_all[j]['filename']))
+
           if waveform1 is None or waveform2 is None:
             continue
 
-          info1 = {"sample_rate" : sample_rate1,
-                  "filename": filename1,
-                  "spectral_centroid": sc_1,
-                  "sample_cnt": len_1}
-          
-          info2 = {"sample_rate" : sample_rate2,
-                  "filename": filename2,
-                  "spectral_centroid": sc_2,
-                  "sample_cnt": len_2}
+          info1 = self.data_long[i]
+          info2 = self.data_all[j]
           
           return waveform1, waveform2, info1, info2
     raise ValueError("No pair found with the required spectral centroid difference")
