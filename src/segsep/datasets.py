@@ -150,6 +150,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
     info1 = self.data_long[idx_long]
     info2 =  self.data_all[idx_all]
 
+    fn_1 = info1['filename']
+    fn_2 = info2['filename']
+
+    # look at distinct pairs only
+    if fn_1 == fn_2:
+      return False
+
     sc_1 = info1['spectral_centroid']['mean']
     sc_2 = info2['spectral_centroid']['mean']
 
@@ -162,14 +169,10 @@ class AudioPairDataset(torch.utils.data.Dataset):
     cont_1 = info1['spectral_contrast']['mean']
     cont_2 = info2['spectral_contrast']['mean']
 
-    len_1 = info1['sample_cnt'] / info1['sample_rate']
-    len_2 = info2['sample_cnt'] / info2['sample_rate']
-    
-    return (abs(sc_1 - sc_2) > self.centroid_diff_hz and
-            abs(flat_1 - flat_2) > self.flatness_diff and
-            abs(bw_1 - bw_2) > self.bandwidth_diff and
-            abs(cont_1 - cont_2) > self.contrast_diff and
-            abs(len_1 - len_2) > self.min_duration_s)
+    return (abs(sc_1 - sc_2) >= self.centroid_diff_hz and
+            abs(flat_1 - flat_2) >= self.flatness_diff and
+            abs(bw_1 - bw_2) >= self.bandwidth_diff and
+            abs(cont_1 - cont_2) >= self.contrast_diff) 
   
   ####################################
   def count_audio_pairs(self):
