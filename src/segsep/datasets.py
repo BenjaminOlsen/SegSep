@@ -147,26 +147,29 @@ class AudioPairDataset(torch.utils.data.Dataset):
     
   ####################################
   def audio_pair_satisfies_condition(self, idx_long, idx_all):
-    sc_1 = self.data_long[idx_long]['spectral_centroid']['mean']
-    sc_2 = self.data_all[idx_all]['spectral_centroid']['mean']
+    info1 = self.data_long[idx_long]
+    info2 =  self.data_all[idx_all]
 
-    flat_1 = self.data_long[idx_long]['spectral_flatness']['mean']
-    flat_2 = self.data_all[idx_all]['spectral_flatness']['mean']
+    sc_1 = info1['spectral_centroid']['mean']
+    sc_2 = info2['spectral_centroid']['mean']
 
-    bw_1 = self.data_long[idx_long]['spectral_bandwidth']['mean']
-    bw_2 = self.data_all[idx_all]['spectral_bandwidth']['mean']
+    flat_1 = info1['spectral_flatness']['mean']
+    flat_2 = info2['spectral_flatness']['mean']
 
-    cont_1 = self.data_long[idx_long]['spectral_contrast']['mean']
-    cont_2 = self.data_all[idx_all]['spectral_contrast']['mean']
+    bw_1 = info1['spectral_bandwidth']['mean']
+    bw_2 = info2['spectral_bandwidth']['mean']
 
-    len_1 = self.data_long[idx_long]['sample_cnt']
-    len_2 = self.data_all[idx_all]['sample_cnt']
-    
+    cont_1 = info1['spectral_contrast']['mean']
+    cont_2 = info2['spectral_contrast']['mean']
+
+    len_1 = info1['sample_cnt'] / info1['sample_rate']
+    len_2 = info2['sample_cnt'] / info2['sample_rate']
     
     return (abs(sc_1 - sc_2) > self.centroid_diff_hz and
             abs(flat_1 - flat_2) > self.flatness_diff and
             abs(bw_1 - bw_2) > self.bandwidth_diff and
-            abs(cont_1 - cont_2) > self.contrast_diff)
+            abs(cont_1 - cont_2) > self.contrast_diff and
+            abs(len_1 - len_2) > self.min_duration_s)
   
   ####################################
   def count_audio_pairs(self):
@@ -182,7 +185,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
   
   ####################################
   def get_audio_pairs(self, idx):
-    
+
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
 
