@@ -132,6 +132,10 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
     print(f"found {len(self.data_long)} files of length {min_duration_s}s or longer")
 
+    torch.manual_seed(0)  # You might want to fix the seed if you want consistent shuffling.
+    random.shuffle(self.data_long)
+    random.shuffle(self.data_all)
+
   ####################################
   def load_audio(self, filename):
     try:
@@ -166,9 +170,6 @@ class AudioPairDataset(torch.utils.data.Dataset):
   
   ####################################
   def count_audio_pairs(self):
-    torch.manual_seed(0)  # You might want to fix the seed if you want consistent shuffling.
-    random.shuffle(self.data_long)
-    random.shuffle(self.data_all)
 
     count = 0
 
@@ -181,10 +182,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
   
   ####################################
   def get_audio_pairs(self, idx):
-    torch.manual_seed(0)
-    random.shuffle(self.data_long)
-    random.shuffle(self.data_all)
-
+    
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
 
