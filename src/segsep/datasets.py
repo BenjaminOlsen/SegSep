@@ -79,7 +79,7 @@ def generate_audio_metadata(audio_dir, output_file, verbose=False):
 # --------------------------------------------------------------------------------------------------
 class AudioPairDataset(torch.utils.data.Dataset):
   """
-  this class defines a dataset which makes random mixtures of a given set of audio defined 
+  this class defines a dataset which makes random mixtures of a given set of audio defined
   in a json file given in the constructor argument, according to certain conditions on the
   certain characteristics of the audio.
 
@@ -94,27 +94,27 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
   if the json metadata file doesn't exist, it tries to create it using generate_audio_metadata.
 
-  It returns a mix, and the separate sources from its __getitem__ using the index as a 
+  It returns a mix, and the separate sources from its __getitem__ using the index as a
   random seed.
 
   dummy_mode creates a mix with the longer of the audios set to 0 for a more event-detection
   task
   """
-  def __init__(self, audio_dir, json_path, 
-               centroid_diff_hz=2000.0, 
-               bandwidth_diff=1350.0,  
+  def __init__(self, audio_dir, json_path,
+               centroid_diff_hz=2000.0,
+               bandwidth_diff=1350.0,
                flatness_diff=0.16,
                contrast_diff=0.07,
-               min_duration_s=11.0, 
+               min_duration_s=11.0,
                dummy_mode=False):
 
     if json_path == None:
       json_path = 'AudioPairDataset_metadata.json'
-    
+
     if not os.path.exists(json_path):
       print(f"creating {json_path}")
       generate_audio_metadata(audio_dir=audio_dir, output_file=json_path, verbose=True)
-    
+
     with open(json_path, 'r') as f:
       self.data_all = json.load(f)
 
@@ -127,6 +127,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
     self.data_long = [d for d in self.data_all if d['sample_cnt'] / d['sample_rate'] > min_duration_s]
     self.dummy_mode = dummy_mode
 
+
     if len(self.data_long) < 2:
       raise ValueError(f"Not enough tracks longer than {min_duration_s} seconds")
 
@@ -136,6 +137,10 @@ class AudioPairDataset(torch.utils.data.Dataset):
     random.shuffle(self.data_long)
     random.shuffle(self.data_all)
 
+    print(f"AudioPairDataset init: counting audio pairs...")
+    self.length = self.count_audio_pairs()
+    print(f"...done")
+
   ####################################
   def load_audio(self, filename):
     try:
@@ -144,7 +149,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
     except Exception as e:
       print(f"Error loading audio file {filename}: {e}")
       return None, None
-    
+
   ####################################
   def audio_pair_satisfies_condition(self, idx_long, idx_all):
     info1 = self.data_long[idx_long]
@@ -172,22 +177,24 @@ class AudioPairDataset(torch.utils.data.Dataset):
     return (abs(sc_1 - sc_2) >= self.centroid_diff_hz and
             abs(flat_1 - flat_2) >= self.flatness_diff and
             abs(bw_1 - bw_2) >= self.bandwidth_diff and
-            abs(cont_1 - cont_2) >= self.contrast_diff) 
-  
+            abs(cont_1 - cont_2) >= self.contrast_diff)
+
   ####################################
   def count_audio_pairs(self):
-
     count = 0
-
     for i in range(len(self.data_long)):
         for j in range(i + 1, len(self.data_all)):
           if self.audio_pair_satisfies_condition(i, j):
             count += 1
-    
+
     return count
-  
+
   ####################################
   def get_audio_pairs(self, idx):
+    torch.manual_seed(idx)
+    random.seed(idx)
+    random.shuffle(self.data_long)
+    random.shuffle(self.data_all)
 
     for i in range(len(self.data_long)):
       for j in range(i+1, len(self.data_all)):
@@ -201,7 +208,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
 
           info1 = self.data_long[i]
           info2 = self.data_all[j]
-          
+
           return waveform1, waveform2, info1, info2
     raise ValueError("No pair found with the required spectral centroid difference")
 
@@ -209,7 +216,7 @@ class AudioPairDataset(torch.utils.data.Dataset):
   def __getitem__(self, idx):
     mix, longer_audio, padded_audio, longer_info, shorter_info, pad_offset = self.get_info(idx)
     return mix, padded_audio
-  
+
   ####################################
   def get_info(self, idx):
     x1, x2, info1, info2 = self.get_audio_pairs(idx)
@@ -235,13 +242,13 @@ class AudioPairDataset(torch.utils.data.Dataset):
     pad_offset = random.randint(0, len_long-len_short)
     #print(f"padding audio1 {len_short} -> {len_long}: {len_long-len_short} offset {pad_offset}")
     padded_audio = torch.nn.functional.pad(shorter_audio, (pad_offset, len_long-len_short-pad_offset))
-    
+
     if self.dummy_mode:
       longer_audio = torch.zeros(longer_audio.shape)
     mix = longer_audio + padded_audio
 
     return mix, longer_audio, padded_audio, longer_info, shorter_info, pad_offset
-    
+
   ####################################
   def __len__(self):
-    return len(self.data_long)
+    return self.length
